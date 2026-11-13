@@ -93,6 +93,13 @@
                         </label>
                         <div class="fieldDescription checkboxFieldDescription" data-i18n="badgeHelp"></div>
                     </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="bloomSleeps" type="checkbox" is="emby-checkbox" />
+                            <span data-i18n="sleeps"></span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription" data-i18n="sleepsHelp"></div>
+                    </div>
                     <button is="emby-button" type="submit" class="raised button-submit emby-button"><span data-i18n="save"></span></button>
                     <div class="bloom-msg" id="bloomSettingsMsg"></div>
                 </form>
@@ -177,6 +184,9 @@
                     versionsHelp: 'If a friend has a movie or an episode you already own, but in another quality (4K, HDR…), or if several friends have it, it shows once and you pick the version when you play it. Your copy plays by default; the exact same file is never imported.',
                     notify: 'Tell my friends when I add movies',
                     notifyHelp: 'Their server updates within minutes, without waiting for the scheduled sync (every 6 hours).',
+                    sleeps: 'My server sleeps when nobody uses it',
+                    sleepsHelp: 'For a server that a proxy stops when idle and starts again on the next visit. Friends then only wake it to play one of your movies, and sync with it whenever it wakes up.',
+                    peerSleeps: 'Sleeps when idle: Bloom only wakes it to play a movie, and syncs whenever it wakes up.',
                     badge: 'Show the friend\'s name on posters',
                     badgeHelp: 'A small "Alice" badge at the bottom of their movie posters and episode images, visible in every list and in every app (TV, mobile). Their items are also tagged, for filtering.',
                     save: 'Save',
@@ -261,6 +271,9 @@
                     versionsHelp: 'Si un ami a un film ou un épisode que vous avez déjà, mais dans une autre qualité (4K, HDR…), ou si plusieurs amis l\'ont, il n\'apparaît qu\'une fois et vous choisissez la version au moment de lire. Votre copie est lue par défaut ; exactement le même fichier n\'est jamais importé.',
                     notify: 'Prévenir mes amis quand j\'ajoute des films',
                     notifyHelp: 'Leur serveur se met à jour dans les minutes qui suivent, sans attendre la synchronisation planifiée (toutes les 6 h).',
+                    sleeps: 'Mon serveur se met en veille quand personne ne l\'utilise',
+                    sleepsHelp: 'Pour un serveur qu\'un proxy arrête quand il ne sert pas et relance à la visite suivante. Vos amis ne le réveilleront que pour regarder un de vos films, et se synchroniseront avec lui à chacun de ses réveils.',
+                    peerSleeps: 'Se met en veille : Bloom ne le réveille que pour regarder un film, et se synchronise à chacun de ses réveils.',
                     badge: 'Afficher le nom de l\'ami sur les affiches',
                     badgeHelp: 'Un petit badge « Alice » en bas des affiches de ses films et des images de ses épisodes, visible dans toutes les listes et sur toutes les applis (TV, mobile). Ses éléments portent aussi un tag, pratique pour filtrer.',
                     save: 'Enregistrer',
@@ -431,6 +444,7 @@
                 $('#bloomNotify').checked = !!s.Settings.NotifyPeersOnChange;
                 $('#bloomBadge').checked = !!s.Settings.BadgePosters;
                 $('#bloomVersions').checked = !!s.Settings.GroupVersions;
+                $('#bloomSleeps').checked = !!s.Settings.SleepsWhenIdle;
                 if (s.Identity.SuggestedUrl && !s.Settings.PublicUrl) {
                     $('#bloomSuggested').textContent = s.Identity.SuggestedUrl;
                     $('#bloomUseSuggested').classList.remove('bloom-hidden');
@@ -500,6 +514,7 @@
                         '<div class="bloom-row"><h4>' + esc(peer.Name) + '</h4>' + peerStatus(peer) + '</div>' +
                         '<div class="bloom-muted">' + esc(peer.Url) + ' · ' + esc(t('fingerprint')) + ' <span class="bloom-fp">' + esc(peer.Fingerprint) + '</span></div>' +
                         '<div class="bloom-muted">' + esc(t('friendsSince', fmtDate(peer.DateAdded), fmtDate(peer.LastSync))) + '</div>' +
+                        (peer.Sleeps ? '<div class="bloom-muted">' + esc(t('peerSleeps')) + '</div>' : '') +
                         (peer.LastError ? '<div class="bloom-msg error">' + esc(peer.LastError) + '</div>' : '') +
                         '<div class="bloom-cols">' +
                             '<div><strong>' + esc(t('iShare', peer.Name)) + '</strong><div class="bloom-libs" data-role="shares">' + shareBoxes + '</div></div>' +
@@ -546,7 +561,8 @@
                         SkipOwnedItems: $('#bloomSkipOwned').checked,
                         NotifyPeersOnChange: $('#bloomNotify').checked,
                         BadgePosters: $('#bloomBadge').checked,
-                        GroupVersions: $('#bloomVersions').checked
+                        GroupVersions: $('#bloomVersions').checked,
+                        SleepsWhenIdle: $('#bloomSleeps').checked
                     });
                     message(msg, t('saved'), 'success');
                     await load();

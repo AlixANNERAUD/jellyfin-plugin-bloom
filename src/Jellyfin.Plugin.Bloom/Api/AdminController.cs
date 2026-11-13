@@ -121,6 +121,7 @@ public class AdminController : ControllerBase
                 p.LastSeen,
                 p.LastSync,
                 p.LastError,
+                p.Sleeps,
                 Busy = _sync.IsBusy(p.Id),
                 p.SharedLibraryIds,
                 p.Imports
@@ -168,6 +169,7 @@ public class AdminController : ControllerBase
             s.Settings.NotifyPeersOnChange = request.NotifyPeersOnChange;
             s.Settings.BadgePosters = request.BadgePosters;
             s.Settings.GroupVersions = request.GroupVersions;
+            s.Settings.SleepsWhenIdle = request.SleepsWhenIdle;
         });
 
         // These change what friends' libraries look like here: apply them now rather than in 6 hours.
@@ -177,11 +179,23 @@ public class AdminController : ControllerBase
             _ = Task.Run(() => _versions.LinkAsync(CancellationToken.None));
         }
 
+        // Friends that are asleep get the change when they wake up.
+        var now = DateTime.UtcNow;
+        var awake = _store.Snapshot().Peers.Where(p => p.Enabled && !p.RevokedByPeer && !p.IsAsleep(now)).ToList();
         if (previous.SkipOwnedItems != request.SkipOwnedItems || previous.BadgePosters != request.BadgePosters || previous.GroupVersions != request.GroupVersions)
         {
-            foreach (var peer in _store.Snapshot().Peers.Where(p => p.Enabled && !p.RevokedByPeer))
+            foreach (var peer in awake)
             {
                 _sync.QueueSync(peer.Id, TimeSpan.FromSeconds(2));
+            }
+        }
+
+        if (previous.SleepsWhenIdle != request.SleepsWhenIdle)
+        {
+            // Tell friends now whether they may contact us on their own.
+            foreach (var peer in awake)
+            {
+                NotifyInBackground(peer, "settings");
             }
         }
 
@@ -398,12 +412,19 @@ public class AdminController : ControllerBase
 
     private void NotifyInBackground(PeerRecord peer, string reason)
     {
+        if (peer.IsAsleep(DateTime.UtcNow))
+        {
+            // Not worth waking it up: it syncs with us when it wakes up.
+            return;
+        }
+
+        var request = new NotifyRequest { Reason = reason, Sleeps = _store.Snapshot().Settings.SleepsWhenIdle };
         _ = Task.Run(async () =>
         {
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-                await _client.SendJsonAsync<object>(PeerEndpoint.From(peer), HttpMethod.Post, "/Bloom/Peer/Notify", new NotifyRequest { Reason = reason }, CancellationToken.None).ConfigureAwait(false);
+                await _client.SendJsonAsync<object>(PeerEndpoint.From(peer), HttpMethod.Post, "/Bloom/Peer/Notify", request, CancellationToken.None).ConfigureAwait(false);
             }
             catch (PeerRequestException ex)
             {

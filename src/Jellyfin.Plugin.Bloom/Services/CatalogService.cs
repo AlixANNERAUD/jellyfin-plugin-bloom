@@ -68,15 +68,26 @@ public sealed class CatalogService
     /// <param name="path">Path.</param>
     /// <returns>Whether it is federated content.</returns>
     public bool IsFederatedPath(string? path)
+        => !string.IsNullOrEmpty(path) && path.StartsWith(MediaRootPrefix(), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    /// <summary>
+    /// The friend a federated item comes from: its files live in <c>&lt;media root&gt;/&lt;friend id&gt;/</c>.
+    /// </summary>
+    /// <param name="path">Path of the item.</param>
+    /// <returns>The friend's server id, or null for our own items.</returns>
+    public string? PeerIdOf(string? path)
     {
-        if (string.IsNullOrEmpty(path))
+        if (!IsFederatedPath(path))
         {
-            return false;
+            return null;
         }
 
-        var root = _store.GetMediaRoot().TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        return path.StartsWith(root, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+        var rest = path![MediaRootPrefix().Length..];
+        var end = rest.IndexOf(Path.DirectorySeparatorChar, StringComparison.Ordinal);
+        return end > 0 ? rest[..end] : null;
     }
+
+    private string MediaRootPrefix() => _store.GetMediaRoot().TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
     /// <summary>
     /// Lists the shareable libraries of this server.

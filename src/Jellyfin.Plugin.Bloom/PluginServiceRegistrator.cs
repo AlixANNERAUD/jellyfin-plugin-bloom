@@ -27,9 +27,16 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton<SyncService>();
         serviceCollection.AddSingleton<PairingService>();
         serviceCollection.AddSingleton<VersionLinker>();
+        serviceCollection.AddSingleton<PeerWaker>();
         serviceCollection.AddHostedService<FederationNotifier>();
 
-        // "Download" of a friend's movie returns the video (relayed), not our .strm file.
-        serviceCollection.Configure<MvcOptions>(options => options.Filters.Add<FederatedDownloadFilter>());
+        serviceCollection.Configure<MvcOptions>(options =>
+        {
+            // "Download" of a friend's movie returns the video (relayed), not our .strm file.
+            options.Filters.Add<FederatedDownloadFilter>();
+
+            // Playing a friend's movie first wakes its server up if it sleeps when idle.
+            options.Filters.Add<WakeFriendFilter>();
+        });
     }
 }

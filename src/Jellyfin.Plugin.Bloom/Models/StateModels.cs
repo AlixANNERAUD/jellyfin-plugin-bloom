@@ -57,6 +57,12 @@ public sealed class FederationSettings
     /// are grouped as versions of one movie instead of being skipped or listed twice.
     /// </summary>
     public bool GroupVersions { get; set; } = true;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether this server sleeps when idle (a proxy stops it and starts it again on
+    /// the next request). Friends then never wake it on their own: they sync when it says it is up.
+    /// </summary>
+    public bool SleepsWhenIdle { get; set; }
 }
 
 /// <summary>A friend server.</summary>
@@ -100,6 +106,17 @@ public sealed class PeerRecord
 
     /// <summary>Gets or sets the last error.</summary>
     public string? LastError { get; set; }
+
+    /// <summary>Gets or sets a value indicating whether the friend's server sleeps when idle.</summary>
+    public bool Sleeps { get; set; }
+
+    /// <summary>
+    /// Whether contacting the friend now would wake its server up: it sleeps when idle and has not been heard from
+    /// recently (a server that just talked to us is up).
+    /// </summary>
+    /// <param name="now">Current UTC time.</param>
+    /// <returns>Whether it is probably asleep.</returns>
+    public bool IsAsleep(DateTime now) => Sleeps && (LastSeen is not DateTime seen || now - seen > TimeSpan.FromMinutes(2));
 }
 
 /// <summary>A library shared by a friend.</summary>

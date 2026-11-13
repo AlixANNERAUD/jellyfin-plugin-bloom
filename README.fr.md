@@ -147,6 +147,11 @@ Les serveurs de vos amis, et leurs lecteurs, doivent pouvoir joindre votre serve
   serveur ; d'autres applis peuvent ne pas réussir à lire.
 - **Gardez *Autoriser les connexions distantes à ce serveur*** activé dans *Tableau de bord → Réseau*.
 - **Gardez l'heure juste** (NTP) : les requêtes signées avec plus de 10 minutes d'écart sont refusées.
+- **Si votre serveur se met en veille** (un proxy comme nginx-hibernator ou Sablier arrête Jellyfin quand il ne
+  sert pas et le relance à la requête suivante), cochez *Mon serveur se met en veille quand personne ne l'utilise*
+  dans *Bloom → Ce serveur*. Les serveurs de vos amis ne le réveillent alors plus d'eux-mêmes : ils se
+  synchronisent avec lui à chacun de ses démarrages, et ne le réveillent que pour lire un de vos films, en
+  attendant qu'il réponde au lieu d'échouer.
 
 **Bande passante.** Quand vous regardez un film d'un ami, c'est son débit montant qui compte : environ 5 à
 15 Mbit/s pour un fichier 1080p courant, 25 à 80 Mbit/s pour de la 4K. Si votre appareil ne lit pas le format,

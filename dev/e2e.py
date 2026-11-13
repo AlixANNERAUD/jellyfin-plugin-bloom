@@ -5,6 +5,9 @@ Prérequis : `docker compose up -d` dans ce dossier, plugin copié dans data/*/c
 """
 import glob
 import http.client
+import http.server
+import subprocess
+import threading
 import json
 import os
 import sys
@@ -19,6 +22,84 @@ SERVERS = {
     "bob": {"host": "http://localhost:8102", "internal": "http://bob.localtest.me:8102", "name": "Bob", "libs": ("Movies", "TV Shows")},
 }
 FAILURES = []
+
+
+class SleepyProxy:
+    """Stands in front of Alice like a proxy that stops idle servers (e.g. nginx-hibernator): while "asleep", the
+    first request starts the server and gets a 503, and so does every request for the next few seconds."""
+
+    def __init__(self, port, target_port, wake_seconds):
+        self.port, self.target_port, self.wake_seconds = port, target_port, wake_seconds
+        self.lock = threading.Lock()
+        self.state, self.woke_at, self.log = "up", 0.0, []
+        proxy = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            protocol_version = "HTTP/1.1"
+
+            def log_message(self, *args):
+                pass
+
+            def handle_any(self):
+                length = int(self.headers.get("Content-Length") or 0)
+                body = self.rfile.read(length) if length else None
+                if not proxy.let_through():
+                    page = b"<html><body>Starting, please wait...</body></html>"
+                    self.send_response(503)
+                    self.send_header("Content-Type", "text/html")
+                    self.send_header("Content-Length", str(len(page)))
+                    self.end_headers()
+                    self.wfile.write(page)
+                    proxy.record(self.command, self.path, 503)
+                    return
+                conn = http.client.HTTPConnection("localhost", proxy.target_port, timeout=120)
+                skip = ("host", "connection", "keep-alive", "transfer-encoding")
+                try:
+                    conn.request(self.command, self.path, body=body, headers={k: v for k, v in self.headers.items() if k.lower() not in skip})
+                    res = conn.getresponse()
+                    data = res.read()
+                except (OSError, http.client.HTTPException):
+                    # Alice is down (restarting): answer like nginx does.
+                    self.send_response(502)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    proxy.record(self.command, self.path, 502)
+                    return
+                self.send_response(res.status)
+                for k, v in res.getheaders():
+                    if k.lower() not in skip + ("content-length",):
+                        self.send_header(k, v)
+                self.send_header("Content-Length", res.getheader("Content-Length", "0") if self.command == "HEAD" else str(len(data)))
+                self.end_headers()
+                if self.command != "HEAD":
+                    self.wfile.write(data)
+                conn.close()
+                proxy.record(self.command, self.path, res.status)
+
+            do_GET = do_POST = do_HEAD = do_DELETE = handle_any
+
+        self.server = http.server.ThreadingHTTPServer(("0.0.0.0", port), Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def let_through(self):
+        with self.lock:
+            if self.state == "asleep":
+                self.state, self.woke_at = "waking", time.time()
+            if self.state == "waking" and time.time() - self.woke_at >= self.wake_seconds:
+                self.state = "up"
+            return self.state == "up"
+
+    def record(self, method, path, status):
+        with self.lock:
+            self.log.append((method, path.split("?")[0], status))
+
+    def sleep(self):
+        with self.lock:
+            self.state, self.log = "asleep", []
+
+    def refused(self):
+        with self.lock:
+            return sum(1 for entry in self.log if entry[2] == 503)
 
 
 def check(cond, label):
@@ -340,6 +421,65 @@ def main():
         print("  Alice : http://localhost:8101   Bob : http://localhost:8102   (admin / admin)")
         print("  Page de la fédération : Tableau de bord → Bloom")
         sys.exit(1 if FAILURES else 0)
+
+    print("== Serveur en veille (arrêté quand il ne sert pas, relancé à la requête suivante)")
+    code, _ = request(SERVERS["alice"]["host"], "POST", "/Bloom/Peer/Wake")
+    check(code == 204, "Alice répond à la demande de réveil")
+    proxy = SleepyProxy(8111, 8101, wake_seconds=6)
+    sleepy_url = "http://alice.localtest.me:8111"
+    code, _ = api("alice", "POST", "/Bloom/Admin/Settings", {"PublicUrl": sleepy_url, "ServerName": "Alice", "SkipOwnedItems": True, "NotifyPeersOnChange": True, "SleepsWhenIdle": True})
+    check(code == 204, "Alice passe derrière un proxy de mise en veille et coche « se met en veille »")
+    code, res = api("alice", "POST", f"/Bloom/Admin/Peers/{bob_id}/Sync")
+    check(code == 200, f"Alice se synchronise avec Bob et lui donne sa nouvelle adresse ({res})")
+    _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+    peer = st_bob["Peers"][0]
+    check(peer["Sleeps"] and peer["Url"] == sleepy_url, "Bob sait qu'Alice se met en veille, et à quelle adresse la joindre")
+
+    proxy.sleep()
+    code, res = api("bob", "POST", f"/Bloom/Admin/Peers/{alice_id}/Sync")
+    check(code == 200 and proxy.refused() > 0, f"synchro alors qu'Alice dort : Bob attend son réveil au lieu d'échouer ({proxy.refused()} réponses 503, {res})")
+    wait_idle("bob")
+    check("Le Grand Test" in titles("bob", "Movie"), "les films d'Alice sont toujours là chez Bob")
+
+    proxy.sleep()
+    movie = next(i for i in items("bob", "Movie") if i["Name"] == "Le Grand Test")
+    started = time.time()
+    code, playback = api("bob", "POST", f"/Items/{movie['Id']}/PlaybackInfo?userId={SERVERS['bob']['user']}", {})
+    waited = time.time() - started
+    source = playback["MediaSources"][0] if code == 200 else {}
+    print(f"     lancement de la lecture : {waited:.1f} s, requêtes vues par le proxy : {proxy.log[:3]}…")
+    check(proxy.log and proxy.log[0][:2] == ("POST", "/Bloom/Peer/Wake"), "lancer un film d'Alice réveille d'abord son serveur")
+    check(code == 200 and waited >= 5 and source.get("Path", "").startswith(sleepy_url), "… et Bob attend qu'il réponde avant de répondre à l'appli")
+    check({"Video", "Audio"} <= {s["Type"] for s in source.get("MediaStreams", [])}, "… puis Jellyfin lit le flux d'Alice normalement")
+
+    proxy.sleep()
+    code, body, _ = request(SERVERS["bob"]["host"], "GET", f"/Items/{movie['Id']}/Download", token=SERVERS["bob"]["token"], raw=True)
+    original = open("data/alice/media/movies/Le Grand Test (2020)/Le Grand Test (2020).mkv", "rb").read()
+    check(code == 200 and body == original and proxy.refused() > 0, "« Télécharger » (lecture dans Infuse) attend aussi le réveil d'Alice")
+
+    print("== Au démarrage, Bloom prévient ses amis et se synchronise avec eux")
+    _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+    _, st_alice = api("alice", "GET", "/Bloom/Admin/Status")
+    before_bob, before_alice = st_bob["Peers"][0]["LastSync"], st_alice["Peers"][0]["LastSync"]
+    subprocess.run(["docker", "restart", "bloom-alice"], check=True, capture_output=True)
+    wait_up(SERVERS["alice"]["host"])
+    for _ in range(120):
+        _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+        _, st_alice = api("alice", "GET", "/Bloom/Admin/Status")
+        if isinstance(st_alice, dict) and st_bob["Peers"][0]["LastSync"] != before_bob and st_alice["Peers"][0]["LastSync"] != before_alice:
+            break
+        time.sleep(1)
+    check(st_bob["Peers"][0]["LastSync"] != before_bob, "Alice redémarre : Bob se synchronise avec elle tout de suite")
+    check(isinstance(st_alice, dict) and st_alice["Peers"][0]["LastSync"] != before_alice, "… et Alice se synchronise avec Bob")
+    check(not st_bob["Peers"][0].get("LastError"), "… sans erreur")
+
+    code, _ = api("alice", "POST", "/Bloom/Admin/Settings", {"PublicUrl": SERVERS["alice"]["internal"], "ServerName": "Alice", "SkipOwnedItems": True, "NotifyPeersOnChange": True})
+    api("alice", "POST", f"/Bloom/Admin/Peers/{bob_id}/Sync")
+    api("bob", "POST", f"/Bloom/Admin/Peers/{alice_id}/Sync")
+    wait_idle("bob")
+    _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+    check(code == 204 and not st_bob["Peers"][0].get("Sleeps") and st_bob["Peers"][0]["Url"] == SERVERS["alice"]["internal"], "Alice décoche la veille : Bob le sait")
+    proxy.server.shutdown()
 
     print("== Retrait du partage puis fin de la fédération")
     movies_lib = next(l["Id"] for l in status["alice"]["ShareableLibraries"] if l["CollectionType"] == "movies")

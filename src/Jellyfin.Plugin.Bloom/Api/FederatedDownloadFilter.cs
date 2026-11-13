@@ -86,19 +86,26 @@ public sealed class FederatedDownloadFilter : IAsyncResultFilter
             var logger = services.GetRequiredService<ILogger<FederatedDownloadFilter>>();
             var client = services.GetRequiredService<IHttpClientFactory>().CreateClient(NamedClient.Default);
 
-            using var request = new HttpRequestMessage(HttpMethods.IsHead(http.Request.Method) ? HttpMethod.Head : HttpMethod.Get, _url);
-            foreach (var header in new[] { "Range", "If-Range" })
-            {
-                if (http.Request.Headers.TryGetValue(header, out var value))
-                {
-                    request.Headers.TryAddWithoutValidation(header, value.ToArray());
-                }
-            }
-
             HttpResponseMessage response;
             try
             {
-                response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, http.RequestAborted).ConfigureAwait(false);
+                // If the friend's server sleeps when idle, this wakes it up: wait for it rather than fail.
+                response = await Waking.SendAsync(
+                    async token =>
+                    {
+                        using var request = new HttpRequestMessage(HttpMethods.IsHead(http.Request.Method) ? HttpMethod.Head : HttpMethod.Get, _url);
+                        foreach (var header in new[] { "Range", "If-Range" })
+                        {
+                            if (http.Request.Headers.TryGetValue(header, out var value))
+                            {
+                                request.Headers.TryAddWithoutValidation(header, value.ToArray());
+                            }
+                        }
+
+                        return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token).ConfigureAwait(false);
+                    },
+                    Waking.Budget,
+                    http.RequestAborted).ConfigureAwait(false);
             }
             catch (HttpRequestException ex)
             {

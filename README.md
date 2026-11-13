@@ -144,6 +144,10 @@ Your friends' servers, and their players, must be able to reach your server, and
   may fail to play.
 - **Keep *Allow remote connections to this server*** enabled in *Dashboard → Networking*.
 - **Keep the clock right** (NTP): signed requests more than 10 minutes off are refused.
+- **If your server sleeps when idle** (a proxy such as nginx-hibernator or Sablier stops Jellyfin and starts it
+  again on the next request), tick *My server sleeps when nobody uses it* in *Bloom → This server*. Your friends'
+  servers then never wake it on their own: they sync with it each time it starts, and only wake it to play one of
+  your movies, waiting for it to answer instead of failing.
 
 **Bandwidth.** When you watch a friend's movie, their upload speed is what counts: roughly 5–15 Mbit/s for a
 typical 1080p file, 25–80 Mbit/s for 4K. If your device can't play the format, **your** server transcodes.
@@ -204,7 +208,8 @@ id, then compared by file size) using Jellyfin's own versions feature.
 | `GET /Bloom/Peer/Image/{id}/{type}` | signature | poster, backdrop, logo… |
 | `GET /Bloom/Peer/Subtitle/{id}/{index}` | signature | external subtitles |
 | `GET /Bloom/Peer/Stream/{id}?p=&t=` | HMAC token | original file, with HTTP Range |
-| `POST /Bloom/Peer/Notify` | signature | "my catalog changed" |
+| `POST /Bloom/Peer/Notify` | signature | "my catalog changed", or "I just started" |
+| `POST /Bloom/Peer/Wake` | none | does nothing: wakes a server that sleeps when idle, before playback |
 | `POST /Bloom/Peer/Unpair` | signature | end of the friendship |
 
 Signed requests carry `X-Bloom-Sender`, `X-Bloom-Timestamp`, `X-Bloom-Nonce` and `X-Bloom-Signature`. The ECDSA

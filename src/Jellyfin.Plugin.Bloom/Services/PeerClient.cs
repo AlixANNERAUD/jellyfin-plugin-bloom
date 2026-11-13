@@ -57,6 +57,7 @@ public sealed record PeerEndpoint(string Id, string Url, string PublicKey)
 public sealed class PeerClient
 {
     private static readonly TimeSpan JsonTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan WakeTimeout = TimeSpan.FromSeconds(30);
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ServerIdentity _identity;
@@ -95,24 +96,33 @@ public sealed class PeerClient
     /// <returns>The answer.</returns>
     public async Task<T> SendJsonAsync<T>(PeerEndpoint peer, HttpMethod method, string pathAndQuery, object? body, CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(JsonTimeout);
-
         var bodyBytes = body is null ? [] : JsonSerializer.SerializeToUtf8Bytes(body, body.GetType(), Json.Options);
-        var nonce = FedProtocol.RandomToken(18);
-        HttpResponseMessage response;
-        byte[] responseBytes;
-        try
-        {
-            response = await SendSignedAsync(peer, method, pathAndQuery, bodyBytes, nonce, HttpCompletionOption.ResponseContentRead, timeout.Token).ConfigureAwait(false);
-            responseBytes = await response.Content.ReadAsByteArrayAsync(timeout.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            throw new PeerRequestException(Text.Get("Timeout", peer.Url), null, ex);
-        }
+        var nonce = string.Empty;
+        var response = await Waking.SendAsync(
+            async token =>
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeout.CancelAfter(JsonTimeout);
+
+                // A fresh nonce on each try: the friend refuses one it has already seen.
+                nonce = FedProtocol.RandomToken(18);
+                try
+                {
+                    return await SendSignedAsync(peer, method, pathAndQuery, bodyBytes, nonce, HttpCompletionOption.ResponseContentRead, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException ex) when (!token.IsCancellationRequested)
+                {
+                    throw new PeerRequestException(Text.Get("Timeout", peer.Url), null, ex);
+                }
+            },
+            Waking.Budget,
+            cancellationToken,
+            (status, wait) => LogWaking(peer, status, wait)).ConfigureAwait(false);
 
         using var disposeResponse = response;
+
+        // The answer is already buffered (ResponseContentRead).
+        var responseBytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -144,7 +154,47 @@ public sealed class PeerClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The response.</returns>
     public Task<HttpResponseMessage> GetRawAsync(PeerEndpoint peer, string pathAndQuery, CancellationToken cancellationToken)
-        => SendSignedAsync(peer, HttpMethod.Get, pathAndQuery, [], FedProtocol.RandomToken(18), HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        => Waking.SendAsync(
+            token => SendSignedAsync(peer, HttpMethod.Get, pathAndQuery, [], FedProtocol.RandomToken(18), HttpCompletionOption.ResponseHeadersRead, token),
+            Waking.Budget,
+            cancellationToken,
+            (status, wait) => LogWaking(peer, status, wait));
+
+    /// <summary>
+    /// Wakes a friend's server up if it sleeps (any request starts it again), and waits until it answers.
+    /// Unsigned: the endpoint does nothing, and friends with an older Bloom answer 404, which also means "up".
+    /// </summary>
+    /// <param name="peer">Friend.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Whether the friend's server is up.</returns>
+    public async Task<bool> WakeAsync(PeerEndpoint peer, CancellationToken cancellationToken)
+    {
+        var client = _httpClientFactory.CreateClient(NamedClient.Default);
+        try
+        {
+            using var response = await Waking.SendAsync(
+                async token =>
+                {
+                    using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                    timeout.CancelAfter(WakeTimeout);
+                    using var request = new HttpRequestMessage(HttpMethod.Post, Combine(peer.Url, "/Bloom/Peer/Wake")) { Content = new ByteArrayContent([]) };
+                    return await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false);
+                },
+                Waking.Budget,
+                cancellationToken,
+                (status, wait) => LogWaking(peer, status, wait)).ConfigureAwait(false);
+            return !Waking.IsWaking(response.StatusCode);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogDebug(ex, "Bloom: {Url} unreachable", peer.Url);
+            return false;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
 
     private static string DescribeError(HttpStatusCode status, byte[] body)
     {
@@ -164,8 +214,17 @@ public sealed class PeerClient
         {
         }
 
+        if (message is null && status == HttpStatusCode.ServiceUnavailable)
+        {
+            // Jellyfin starting, or a proxy starting it: still not up after Waking.Budget.
+            return Text.Get("NotAwake");
+        }
+
         return message is null ? Text.Get("HttpError", (int)status) : Text.Get("HttpErrorWithMessage", (int)status, message);
     }
+
+    private void LogWaking(PeerEndpoint peer, HttpStatusCode status, TimeSpan wait)
+        => _logger.LogDebug("Bloom: {Url} is not ready (HTTP {Status}), trying again in {Delay}s", peer.Url, (int)status, wait.TotalSeconds);
 
     private async Task<HttpResponseMessage> SendSignedAsync(PeerEndpoint peer, HttpMethod method, string pathAndQuery, byte[] body, string nonce, HttpCompletionOption completion, CancellationToken cancellationToken)
     {

@@ -113,14 +113,21 @@ public sealed class SyncService : IDisposable
     }
 
     /// <summary>
-    /// Syncs every enabled friend.
+    /// Syncs every enabled friend, except those whose server is asleep: they are synced when they say they are up.
     /// </summary>
     /// <param name="progress">Progress.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A task.</returns>
     public async Task SyncAllAsync(IProgress<double>? progress, CancellationToken cancellationToken)
     {
-        var peers = _store.Snapshot().Peers.Where(p => p.Enabled && !p.RevokedByPeer).Select(p => p.Id).ToList();
+        var now = DateTime.UtcNow;
+        var active = _store.Snapshot().Peers.Where(p => p.Enabled && !p.RevokedByPeer).ToList();
+        foreach (var asleep in active.Where(p => p.IsAsleep(now)))
+        {
+            _logger.LogInformation("Bloom: {Peer} sleeps when idle, it will be synced when it wakes up", asleep.Name);
+        }
+
+        var peers = active.Where(p => !p.IsAsleep(now)).Select(p => p.Id).ToList();
         for (var i = 0; i < peers.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -192,6 +199,7 @@ public sealed class SyncService : IDisposable
                 _store.UpdatePeer(peerId, p =>
                 {
                     MergeImports(p, peer.Imports);
+                    p.Sleeps = peer.Sleeps;
                     if (!string.IsNullOrWhiteSpace(peer.Name))
                     {
                         p.Name = peer.Name;
@@ -353,8 +361,9 @@ public sealed class SyncService : IDisposable
     {
         var endpoint = PeerEndpoint.From(peer);
         var settings = _store.Snapshot().Settings;
-        var hello = new HelloRequest { Name = _store.GetDisplayName(), Url = settings.PublicUrl ?? string.Empty };
+        var hello = new HelloRequest { Name = _store.GetDisplayName(), Url = settings.PublicUrl ?? string.Empty, Sleeps = settings.SleepsWhenIdle };
         var libraries = await _client.SendJsonAsync<CatalogLibrariesResponse>(endpoint, HttpMethod.Post, "/Bloom/Peer/Libraries", hello, cancellationToken).ConfigureAwait(false);
+        peer.Sleeps = libraries.Sleeps;
         libraries.Libraries = libraries.Libraries
             .Where(l => MediaWriter.IsSafeId(l.Id) && l.CollectionType is "movies" or "tvshows")
             .ToList();

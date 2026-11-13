@@ -58,6 +58,7 @@ public static class Text
         ["UnreadableResponse"] = ("Unreadable answer.", "Réponse illisible."),
         ["HttpError"] = ("HTTP {0}", "HTTP {0}"),
         ["HttpErrorWithMessage"] = ("HTTP {0}: {1}", "HTTP {0} : {1}"),
+        ["NotAwake"] = ("Your friend's server did not finish starting up in time (HTTP 503).", "Le serveur de votre ami n'a pas fini de démarrer à temps (HTTP 503)."),
 
         // Settings page.
         ["InvalidPublicUrl"] = ("Invalid public URL (for example https://jellyfin.example.com).", "URL publique invalide (ex. : https://jellyfin.exemple.fr)."),

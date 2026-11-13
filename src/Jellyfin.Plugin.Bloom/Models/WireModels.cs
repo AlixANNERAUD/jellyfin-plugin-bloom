@@ -102,6 +102,9 @@ public sealed class HelloRequest
 
     /// <summary>Gets or sets the caller's public URL.</summary>
     public string Url { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether the caller sleeps when idle.</summary>
+    public bool Sleeps { get; set; }
 }
 
 /// <summary>A library shared with the caller.</summary>
@@ -128,6 +131,9 @@ public sealed class CatalogLibrariesResponse
 
     /// <summary>Gets or sets the libraries shared with the caller.</summary>
     public List<CatalogLibrary> Libraries { get; set; } = [];
+
+    /// <summary>Gets or sets a value indicating whether this server sleeps when idle.</summary>
+    public bool Sleeps { get; set; }
 }
 
 /// <summary>A page of catalog items.</summary>
@@ -300,9 +306,12 @@ public sealed class CatalogItem
     public CatalogItem ShallowCopy() => (CatalogItem)MemberwiseClone();
 }
 
-/// <summary>Sent to friends when our shared catalog changed.</summary>
+/// <summary>Sent to friends when our shared catalog changed, or when we just started.</summary>
 public sealed class NotifyRequest
 {
     /// <summary>Gets or sets the reason.</summary>
     public string Reason { get; set; } = string.Empty;
+
+    /// <summary>Gets or sets a value indicating whether the sender sleeps when idle.</summary>
+    public bool Sleeps { get; set; }
 }

@@ -161,10 +161,20 @@ public class PeerController : ControllerBase
             {
                 p.Url = url;
             }
+
+            if (hello is not null)
+            {
+                p.Sleeps = hello.Sleeps;
+            }
         });
 
         return Signed(
-            new CatalogLibrariesResponse { ServerName = _store.GetDisplayName(), Libraries = _catalog.GetSharedLibraries(verified.Peer) },
+            new CatalogLibrariesResponse
+            {
+                ServerName = _store.GetDisplayName(),
+                Libraries = _catalog.GetSharedLibraries(verified.Peer),
+                Sleeps = _store.Snapshot().Settings.SleepsWhenIdle
+            },
             verified.Nonce!);
     }
 
@@ -303,10 +313,36 @@ public class PeerController : ControllerBase
             return verified.Error;
         }
 
-        _store.UpdatePeer(verified.Peer!.Id, p => p.LastSeen = DateTime.UtcNow);
+        NotifyRequest? notify = null;
+        try
+        {
+            notify = JsonSerializer.Deserialize<NotifyRequest>(verified.Body!, Models.Json.Options);
+        }
+        catch (JsonException)
+        {
+        }
+
+        _store.UpdatePeer(verified.Peer!.Id, p =>
+        {
+            p.LastSeen = DateTime.UtcNow;
+            if (notify is not null)
+            {
+                p.Sleeps = notify.Sleeps;
+            }
+        });
+
+        // Also sent by a friend that just started: sync while it is up, even if it sleeps when idle.
         _sync.QueueSync(verified.Peer.Id, TimeSpan.FromSeconds(20));
         return Signed(new { ok = true }, verified.Nonce!);
     }
+
+    /// <summary>
+    /// Does nothing. A friend calls it before playing one of our movies: if this server sleeps when idle, the request
+    /// wakes it up (through the proxy that starts it), and the friend waits until it answers.
+    /// </summary>
+    /// <returns>Nothing.</returns>
+    [HttpPost("Wake")]
+    public ActionResult Wake() => NoContent();
 
     /// <summary>
     /// A friend removed us: stop sharing with it and remove its items.
