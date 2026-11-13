@@ -41,7 +41,14 @@ jobs:
         env:
           REPO: ${{ github.repository }}
         run: |
-          curl -fsSL "https://github.com/$REPO/releases/latest/download/manifest.json" -o previous.json || rm -f previous.json
+          # Earlier versions are carried over from the previous manifest. Only a 404 means there is none yet (first
+          # release): on any other failure, stop rather than publish a manifest that lists this version alone.
+          code=$(curl -sSL -o previous.json -w '%{http_code}' "https://github.com/$REPO/releases/latest/download/manifest.json")
+          case "$code" in
+            200) ;;
+            404) rm -f previous.json ;;
+            *) echo "::error::Could not fetch the previous manifest (HTTP $code)"; exit 1 ;;
+          esac
           python3 .github/scripts/manifest.py repo \
             --zip "bloom_$VERSION.0.zip" \
             --version "$VERSION" \
