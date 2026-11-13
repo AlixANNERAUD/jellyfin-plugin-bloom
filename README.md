@@ -12,7 +12,6 @@
 <p align="center">
   <a href="https://github.com/qberal/jellyfin-plugin-bloom/releases/latest"><img src="https://img.shields.io/github/v/release/qberal/jellyfin-plugin-bloom?color=00A4DC" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Jellyfin-12.4-AA5CC3?logo=jellyfin&logoColor=white" alt="Jellyfin 12.4">
-  <a href="https://github.com/qberal/jellyfin-plugin-bloom/actions/workflows/build.yml"><img src="https://github.com/qberal/jellyfin-plugin-bloom/actions/workflows/build.yml/badge.svg" alt="Build"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/qberal/jellyfin-plugin-bloom" alt="License: GPL-3.0"></a>
 </p>
 
