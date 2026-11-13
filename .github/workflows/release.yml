@@ -1,0 +1,61 @@
+# Pushing a tag such as v0.2.0 builds the plugin, publishes a GitHub release with the zip, and updates the
+# repository manifest Jellyfin reads (an asset of the release, served at releases/latest/download/manifest.json).
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+env:
+  TARGET_ABI: "12.4.0.0"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Fonts for the poster badge tests
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends libfontconfig1 fonts-dejavu-core
+
+      - name: Test
+        run: dotnet test Bloom.slnx -c Release
+
+      - name: Build
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          dotnet publish src/Jellyfin.Plugin.Bloom -c Release -o out \
+            -p:Version="$VERSION.0" -p:AssemblyVersion="$VERSION.0" -p:FileVersion="$VERSION.0"
+          python3 .github/scripts/manifest.py meta --version "$VERSION" --target-abi "$TARGET_ABI" --out out/meta.json
+          (cd out && zip "../bloom_$VERSION.0.zip" Jellyfin.Plugin.Bloom.dll meta.json)
+
+      - name: Manifest
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          curl -fsSL "https://github.com/$REPO/releases/latest/download/manifest.json" -o previous.json || rm -f previous.json
+          python3 .github/scripts/manifest.py repo \
+            --zip "bloom_$VERSION.0.zip" \
+            --version "$VERSION" \
+            --target-abi "$TARGET_ABI" \
+            --url "https://github.com/$REPO/releases/download/$GITHUB_REF_NAME/bloom_$VERSION.0.zip" \
+            --image-url "https://raw.githubusercontent.com/$REPO/main/assets/thumb.png" \
+            --previous previous.json \
+            --notes notes.md \
+            --out manifest.json
+          cat manifest.json
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "bloom_$VERSION.0.zip" manifest.json \
+            --title "Bloom $VERSION" --notes-file notes.md --latest

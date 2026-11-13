@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <title>Bloom</title>
+</head>
+<body>
+<div id="BloomPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+            <style>
+                #BloomPage .bloom-card { background: rgba(128,128,128,.08); border: 1px solid rgba(128,128,128,.2); border-radius: 10px; padding: 1.2em 1.4em; margin: 0 0 1.4em; }
+                #BloomPage .bloom-card h3 { margin: 0 0 .4em; }
+                #BloomPage .bloom-muted { opacity: .7; font-size: .92em; }
+                #BloomPage .bloom-fp { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 1.05em; letter-spacing: .04em; background: rgba(128,128,128,.15); padding: .15em .45em; border-radius: 5px; white-space: nowrap; }
+                #BloomPage .bloom-row { display: flex; flex-wrap: wrap; gap: .6em; align-items: center; }
+                #BloomPage .bloom-libs { display: flex; flex-wrap: wrap; gap: .2em 1.4em; margin: .4em 0 .8em; }
+                #BloomPage .bloom-libs .checkboxContainer { margin: 0; }
+                #BloomPage textarea.bloom-code { width: 100%; box-sizing: border-box; min-height: 5.5em; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85em; background: rgba(0,0,0,.25); color: inherit; border: 1px solid rgba(128,128,128,.35); border-radius: 6px; padding: .6em; word-break: break-all; resize: vertical; }
+                #BloomPage .bloom-pill { display: inline-block; font-size: .78em; padding: .15em .65em; border-radius: 999px; font-weight: 600; vertical-align: middle; }
+                #BloomPage .bloom-ok { background: rgba(34,197,94,.2); color: #4ade80; }
+                #BloomPage .bloom-warn { background: rgba(234,179,8,.2); color: #facc15; }
+                #BloomPage .bloom-err { background: rgba(239,68,68,.2); color: #f87171; }
+                #BloomPage .bloom-off { background: rgba(148,163,184,.2); color: #cbd5e1; }
+                #BloomPage .bloom-peer { border-top: 1px solid rgba(128,128,128,.2); padding: 1.1em 0 .4em; }
+                #BloomPage .bloom-peer:first-child { border-top: 0; padding-top: .2em; }
+                #BloomPage .bloom-peer h4 { margin: 0; font-size: 1.15em; }
+                #BloomPage .bloom-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1em 2em; margin-top: .8em; }
+                #BloomPage .bloom-import { display: grid; grid-template-columns: 1fr minmax(180px, 1.2fr); gap: .5em; align-items: center; margin: .35em 0; }
+                #BloomPage .bloom-import select { width: 100%; }
+                #BloomPage .bloom-msg { margin-top: .6em; }
+                #BloomPage .bloom-msg.error { color: #f87171; }
+                #BloomPage .bloom-msg.success { color: #4ade80; }
+                #BloomPage .bloom-steps { margin: .3em 0 0; padding-left: 1.2em; }
+                #BloomPage .bloom-hidden { display: none; }
+                #BloomPage .emby-button.bloom-small { padding: .35em .9em; font-size: .9em; margin: 0; }
+            </style>
+
+            <div class="verticalSection">
+                <h2 class="sectionTitle">Bloom · fédération entre amis</h2>
+                <p class="bloom-muted">
+                    Partagez vos bibliothèques avec des serveurs Jellyfin amis. Leurs films et séries apparaissent dans vos bibliothèques
+                    et sont lus directement depuis leur serveur ; les vôtres apparaissent chez eux. Chaque serveur a une clé : les amis
+                    s'ajoutent par échange de clés, et chaque requête entre serveurs est signée.
+                </p>
+            </div>
+
+            <!-- Ce serveur -->
+            <div class="bloom-card">
+                <h3>Ce serveur</h3>
+                <p>Empreinte de votre clé : <span class="bloom-fp" id="bloomFingerprint">…</span></p>
+                <p class="bloom-muted">Lors de l'ajout d'un ami, comparez vos empreintes de vive voix ou par téléphone : si elles correspondent, personne ne s'est intercalé.</p>
+                <form id="bloomSettingsForm">
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="bloomPublicUrl">URL publique (joignable par vos amis)</label>
+                        <input id="bloomPublicUrl" type="url" is="emby-input" placeholder="https://jellyfin.exemple.fr" />
+                        <div class="fieldDescription">
+                            Adresse à laquelle les serveurs (et les lecteurs) de vos amis contactent ce serveur. Utilisez HTTPS.
+                            <a href="#" id="bloomUseSuggested" class="bloom-hidden">Utiliser <span id="bloomSuggested"></span></a>
+                        </div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="bloomServerName">Nom affiché chez vos amis</label>
+                        <input id="bloomServerName" type="text" is="emby-input" />
+                        <div class="fieldDescription">Laissez vide pour utiliser le nom du serveur Jellyfin.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="bloomMediaRoot">Dossier des médias fédérés</label>
+                        <input id="bloomMediaRoot" type="text" is="emby-input" />
+                        <div class="fieldDescription">Où sont écrits les fichiers .strm/.nfo/affiches des films de vos amis (quelques Ko par film). Vide = <span id="bloomDefaultRoot"></span></div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="bloomSkipOwned" type="checkbox" is="emby-checkbox" />
+                            <span>Ne pas importer ce que j'ai déjà</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Les films et épisodes que vous possédez déjà (même identifiant TMDB/IMDb/TVDB) ne sont pas dupliqués. Les épisodes qui vous manquent dans une série sont quand même ajoutés.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="bloomVersions" type="checkbox" is="emby-checkbox" />
+                            <span>Proposer les autres versions (films et épisodes)</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Si un ami a un film ou un épisode que vous avez déjà, mais dans une autre qualité (4K, HDR…), ou si plusieurs amis l'ont, il n'apparaît qu'une fois et vous choisissez la version au moment de lire. Votre copie est lue par défaut ; exactement le même fichier n'est jamais importé.</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="bloomNotify" type="checkbox" is="emby-checkbox" />
+                            <span>Prévenir mes amis quand j'ajoute des films</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Leur serveur se met à jour dans les minutes qui suivent, sans attendre la synchronisation planifiée (toutes les 6 h).</div>
+                    </div>
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="bloomBadge" type="checkbox" is="emby-checkbox" />
+                            <span>Afficher le nom de l'ami sur les affiches</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">Un petit badge « Alice » en bas des affiches de ses films et des images de ses épisodes, visible dans toutes les listes et sur toutes les applis (TV, mobile). Pour filtrer, utilisez aussi le tag « Fédération : Alice ».</div>
+                    </div>
+                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Enregistrer</span></button>
+                    <div class="bloom-msg" id="bloomSettingsMsg"></div>
+                </form>
+            </div>
+
+            <!-- Inviter -->
+            <div class="bloom-card">
+                <h3>Inviter un ami</h3>
+                <p class="bloom-muted">Choisissez ce que vous partagez avec lui, créez l'invitation et envoyez-lui le code par un canal de confiance (Signal, WhatsApp…). Le code est valable 7 jours et ne sert qu'une fois.</p>
+                <div class="bloom-libs" id="bloomInviteLibs"></div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="bloomInviteLabel">Pour qui ? (facultatif, pour vous y retrouver)</label>
+                    <input id="bloomInviteLabel" type="text" is="emby-input" />
+                </div>
+                <button is="emby-button" type="button" id="bloomCreateInvite" class="raised emby-button"><span>Créer une invitation</span></button>
+                <div class="bloom-msg" id="bloomInviteMsg"></div>
+                <div id="bloomInviteResult" class="bloom-hidden">
+                    <p>Code à envoyer à votre ami :</p>
+                    <textarea class="bloom-code" id="bloomInviteCode" readonly></textarea>
+                    <div class="bloom-row" style="margin-top:.5em">
+                        <button is="emby-button" type="button" id="bloomCopyInvite" class="raised emby-button bloom-small"><span>Copier</span></button>
+                        <span class="bloom-muted">Il verra votre empreinte : <span class="bloom-fp" id="bloomInviteFp"></span></span>
+                    </div>
+                </div>
+                <p class="bloom-muted" id="bloomPendingInvites"></p>
+            </div>
+
+            <!-- Rejoindre -->
+            <div class="bloom-card">
+                <h3>Rejoindre un ami</h3>
+                <p class="bloom-muted">Collez le code d'invitation reçu.</p>
+                <textarea class="bloom-code" id="bloomJoinCode" placeholder="bloom1:…"></textarea>
+                <div style="margin-top:.6em">
+                    <button is="emby-button" type="button" id="bloomInspect" class="raised emby-button"><span>Vérifier l'invitation</span></button>
+                </div>
+                <div class="bloom-msg" id="bloomJoinMsg"></div>
+                <div id="bloomJoinPreview" class="bloom-hidden">
+                    <p>Invitation de <strong id="bloomJoinName"></strong> (<span id="bloomJoinUrl"></span>)</p>
+                    <p>Empreinte annoncée : <span class="bloom-fp" id="bloomJoinFp"></span></p>
+                    <p class="bloom-muted">Demandez à votre ami de vous lire l'empreinte affichée sur sa page Bloom : elle doit être identique.</p>
+                    <p>Ce que vous partagez en retour :</p>
+                    <div class="bloom-libs" id="bloomJoinLibs"></div>
+                    <button is="emby-button" type="button" id="bloomAccept" class="raised button-submit emby-button"><span>Devenir amis</span></button>
+                </div>
+            </div>
+
+            <!-- Amis -->
+            <div class="bloom-card">
+                <h3>Mes amis</h3>
+                <div id="bloomPeers"><p class="bloom-muted">Chargement…</p></div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        (function () {
+            var page = document.querySelector('#BloomPage');
+            var state = null;
+            var pollTimer = null;
+
+            function $(sel) { return page.querySelector(sel); }
+
+            function esc(value) {
+                return String(value === null || value === undefined ? '' : value)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            function fmtDate(value) {
+                if (!value) return 'jamais';
+                var d = new Date(value);
+                return isNaN(d) ? '—' : d.toLocaleString();
+            }
+
+            function typeLabel(type) {
+                return type === 'tvshows' ? 'Séries' : (type === 'movies' ? 'Films' : (type || '?'));
+            }
+
+            function message(el, text, kind) {
+                el.textContent = text || '';
+                el.className = 'bloom-msg' + (kind ? ' ' + kind : '');
+            }
+
+            async function call(method, path, body) {
+                var res = await fetch(ApiClient.getUrl('Bloom/Admin/' + path), {
+                    method: method,
+                    headers: {
+                        'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"',
+                        'Content-Type': 'application/json'
+                    },
+                    body: body === undefined ? undefined : JSON.stringify(body)
+                });
+                var text = await res.text();
+                var data = null;
+                try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+                if (!res.ok) {
+                    throw new Error((data && (data.error || data.title)) || ('Erreur HTTP ' + res.status));
+                }
+                return data;
+            }
+
+            function libCheckboxes(container, name, libs, selected) {
+                if (!libs.length) {
+                    container.innerHTML = '<span class="bloom-muted">Aucune bibliothèque de films ou de séries.</span>';
+                    return;
+                }
+                container.innerHTML = libs.map(function (lib) {
+                    var checked = selected.indexOf(lib.Id) >= 0 ? ' checked' : '';
+                    return '<div class="checkboxContainer"><label class="emby-checkbox-label">' +
+                        '<input type="checkbox" is="emby-checkbox" data-lib="' + esc(lib.Id) + '" name="' + esc(name) + '"' + checked + ' />' +
+                        '<span>' + esc(lib.Name) + ' <span class="bloom-muted">(' + esc(typeLabel(lib.CollectionType)) + ')</span></span></label></div>';
+                }).join('');
+            }
+
+            function checkedLibs(container) {
+                return Array.prototype.map.call(container.querySelectorAll('input[data-lib]:checked'), function (i) { return i.getAttribute('data-lib'); });
+            }
+
+            function normId(id) { return String(id || '').replace(/-/g, '').toLowerCase(); }
+
+            function renderStatus() {
+                var s = state;
+                $('#bloomFingerprint').textContent = s.Identity.Fingerprint;
+                $('#bloomInviteFp').textContent = s.Identity.Fingerprint;
+                $('#bloomPublicUrl').value = s.Settings.PublicUrl || '';
+                $('#bloomServerName').value = s.Settings.ServerName || '';
+                $('#bloomServerName').setAttribute('placeholder', s.Identity.Name);
+                $('#bloomMediaRoot').value = s.Settings.MediaRoot || '';
+                $('#bloomDefaultRoot').textContent = s.MediaRoot;
+                $('#bloomSkipOwned').checked = !!s.Settings.SkipOwnedItems;
+                $('#bloomNotify').checked = !!s.Settings.NotifyPeersOnChange;
+                $('#bloomBadge').checked = !!s.Settings.BadgePosters;
+                $('#bloomVersions').checked = !!s.Settings.GroupVersions;
+                if (s.Identity.SuggestedUrl && !s.Settings.PublicUrl) {
+                    $('#bloomSuggested').textContent = s.Identity.SuggestedUrl;
+                    $('#bloomUseSuggested').classList.remove('bloom-hidden');
+                } else {
+                    $('#bloomUseSuggested').classList.add('bloom-hidden');
+                }
+
+                var allIds = s.ShareableLibraries.map(function (l) { return l.Id; });
+                if (!$('#bloomInviteLibs').hasChildNodes()) libCheckboxes($('#bloomInviteLibs'), 'invite', s.ShareableLibraries, allIds);
+                if (!$('#bloomJoinLibs').hasChildNodes()) libCheckboxes($('#bloomJoinLibs'), 'join', s.ShareableLibraries, allIds);
+
+                var invites = s.Invites || [];
+                $('#bloomPendingInvites').textContent = invites.length
+                    ? invites.length + ' invitation(s) en attente : ' + invites.map(function (i) { return (i.Label || 'sans nom') + ' (expire le ' + fmtDate(i.ExpiresUtc) + ')'; }).join(', ')
+                    : '';
+
+                renderPeers();
+            }
+
+            function peerStatus(peer) {
+                if (peer.RevokedByPeer) return '<span class="bloom-pill bloom-err">A mis fin à la fédération</span>';
+                if (!peer.Enabled) return '<span class="bloom-pill bloom-off">En pause</span>';
+                if (peer.Busy) return '<span class="bloom-pill bloom-warn">Synchronisation…</span>';
+                if (peer.LastError) return '<span class="bloom-pill bloom-err">Erreur</span>';
+                if (peer.LastSync) return '<span class="bloom-pill bloom-ok">Connecté</span>';
+                return '<span class="bloom-pill bloom-warn">En attente</span>';
+            }
+
+            function importSelect(peer, imp) {
+                var targets = state.MergeTargets.filter(function (t) { return t.CollectionType === imp.CollectionType; });
+                var current = imp.Mode === 'Merge' ? 'merge:' + (imp.TargetLibrary || '') : (imp.Mode === 'Separate' ? 'separate' : 'ignore');
+                var options = targets.map(function (t) {
+                    var v = 'merge:' + t.Name;
+                    return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>Ajouter à « ' + esc(t.Name) + ' »</option>';
+                });
+                options.push('<option value="separate"' + (current === 'separate' ? ' selected' : '') + '>Bibliothèque séparée « ' + esc(imp.RemoteLibraryName + ' (' + peer.Name + ')') + ' »</option>');
+                options.push('<option value="ignore"' + (current === 'ignore' ? ' selected' : '') + '>Ne pas importer</option>');
+                return '<select is="emby-select" class="emby-select-withcolor emby-select" data-import="' + esc(imp.RemoteLibraryId) + '">' + options.join('') + '</select>';
+            }
+
+            function renderPeers() {
+                var container = $('#bloomPeers');
+                var peers = state.Peers || [];
+                if (!peers.length) {
+                    container.innerHTML = '<p class="bloom-muted">Pas encore d\'ami. Créez une invitation ou collez celle d\'un ami ci-dessus.</p>';
+                    return;
+                }
+
+                container.innerHTML = peers.map(function (peer) {
+                    var shared = (peer.SharedLibraryIds || []).map(normId);
+                    var shareBoxes = state.ShareableLibraries.map(function (lib) {
+                        var checked = shared.indexOf(normId(lib.Id)) >= 0 ? ' checked' : '';
+                        return '<div class="checkboxContainer"><label class="emby-checkbox-label">' +
+                            '<input type="checkbox" is="emby-checkbox" data-lib="' + esc(lib.Id) + '"' + checked + ' />' +
+                            '<span>' + esc(lib.Name) + '</span></label></div>';
+                    }).join('') || '<span class="bloom-muted">Aucune bibliothèque.</span>';
+
+                    var imports = (peer.Imports || []).map(function (imp) {
+                        var counts = imp.Mode === 'Ignore' ? '' : ' · ' + imp.ImportedCount + ' titre(s)'
+                            + (imp.VersionCount ? ' dont ' + imp.VersionCount + ' autre(s) version(s) de ce que vous avez' : '')
+                            + (imp.SkippedCount ? ', ' + imp.SkippedCount + ' déjà chez vous' : '');
+                        return '<div class="bloom-import"><div><strong>' + esc(imp.RemoteLibraryName) + '</strong> <span class="bloom-muted">' + esc(typeLabel(imp.CollectionType)) + esc(counts) + '</span></div>' + importSelect(peer, imp) + '</div>';
+                    }).join('') || '<span class="bloom-muted">' + (peer.LastSync ? 'Ne partage rien avec vous pour l\'instant.' : 'Pas encore synchronisé.') + '</span>';
+
+                    return '<div class="bloom-peer" data-peer="' + esc(peer.Id) + '">' +
+                        '<div class="bloom-row"><h4>' + esc(peer.Name) + '</h4>' + peerStatus(peer) + '</div>' +
+                        '<div class="bloom-muted">' + esc(peer.Url) + ' · empreinte <span class="bloom-fp">' + esc(peer.Fingerprint) + '</span></div>' +
+                        '<div class="bloom-muted">Ami depuis le ' + esc(fmtDate(peer.DateAdded)) + ' · dernière synchro : ' + esc(fmtDate(peer.LastSync)) + '</div>' +
+                        (peer.LastError ? '<div class="bloom-msg error">' + esc(peer.LastError) + '</div>' : '') +
+                        '<div class="bloom-cols">' +
+                            '<div><strong>Ce que je partage avec ' + esc(peer.Name) + '</strong><div class="bloom-libs" data-role="shares">' + shareBoxes + '</div></div>' +
+                            '<div><strong>Ce que ' + esc(peer.Name) + ' partage avec moi</strong><div data-role="imports">' + imports + '</div></div>' +
+                        '</div>' +
+                        '<div class="checkboxContainer" style="margin:.6em 0"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" data-role="enabled"' + (peer.Enabled ? ' checked' : '') + ' /><span>Fédération active (décocher pour mettre en pause dans les deux sens)</span></label></div>' +
+                        '<div class="bloom-row">' +
+                            '<button is="emby-button" type="button" class="raised button-submit emby-button bloom-small" data-action="save"><span>Enregistrer</span></button>' +
+                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="sync"' + (peer.Busy ? ' disabled' : '') + '><span>Synchroniser maintenant</span></button>' +
+                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="remove"><span>Retirer cet ami</span></button>' +
+                        '</div>' +
+                        '<div class="bloom-msg" data-role="msg"></div>' +
+                    '</div>';
+                }).join('');
+
+                var busy = peers.some(function (p) { return p.Busy; });
+                clearTimeout(pollTimer);
+                if (busy) pollTimer = setTimeout(load, 3000);
+            }
+
+            async function load() {
+                try {
+                    state = await call('GET', 'Status');
+                    renderStatus();
+                } catch (e) {
+                    $('#bloomPeers').innerHTML = '<p class="bloom-msg error">' + esc(e.message) + '</p>';
+                }
+            }
+
+            $('#bloomUseSuggested').addEventListener('click', function (e) {
+                e.preventDefault();
+                $('#bloomPublicUrl').value = $('#bloomSuggested').textContent;
+            });
+
+            $('#bloomSettingsForm').addEventListener('submit', async function (e) {
+                e.preventDefault();
+                var msg = $('#bloomSettingsMsg');
+                try {
+                    await call('POST', 'Settings', {
+                        PublicUrl: $('#bloomPublicUrl').value.trim() || null,
+                        ServerName: $('#bloomServerName').value.trim() || null,
+                        MediaRoot: $('#bloomMediaRoot').value.trim() || null,
+                        SkipOwnedItems: $('#bloomSkipOwned').checked,
+                        NotifyPeersOnChange: $('#bloomNotify').checked,
+                        BadgePosters: $('#bloomBadge').checked,
+                        GroupVersions: $('#bloomVersions').checked
+                    });
+                    message(msg, 'Enregistré.', 'success');
+                    await load();
+                } catch (err) {
+                    message(msg, err.message, 'error');
+                }
+                return false;
+            });
+
+            $('#bloomCreateInvite').addEventListener('click', async function () {
+                var msg = $('#bloomInviteMsg');
+                message(msg, '');
+                try {
+                    var res = await call('POST', 'Invites', { SharedLibraryIds: checkedLibs($('#bloomInviteLibs')), Label: $('#bloomInviteLabel').value.trim() || null });
+                    $('#bloomInviteCode').value = res.Code;
+                    $('#bloomInviteResult').classList.remove('bloom-hidden');
+                    message(msg, 'Invitation créée, valable jusqu\'au ' + fmtDate(res.ExpiresUtc) + '.', 'success');
+                    await load();
+                } catch (err) {
+                    message(msg, err.message, 'error');
+                }
+            });
+
+            $('#bloomCopyInvite').addEventListener('click', function () {
+                var area = $('#bloomInviteCode');
+                area.select();
+                var done = function () { message($('#bloomInviteMsg'), 'Code copié.', 'success'); };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(area.value).then(done, function () { document.execCommand('copy'); done(); });
+                } else {
+                    document.execCommand('copy');
+                    done();
+                }
+            });
+
+            $('#bloomInspect').addEventListener('click', async function () {
+                var msg = $('#bloomJoinMsg');
+                message(msg, '');
+                $('#bloomJoinPreview').classList.add('bloom-hidden');
+                try {
+                    var info = await call('POST', 'Invites/Inspect', { Code: $('#bloomJoinCode').value.trim() });
+                    if (info.IsSelf) throw new Error('C\'est votre propre invitation : envoyez-la à votre ami.');
+                    if (info.AlreadyFriend) throw new Error(info.Name + ' fait déjà partie de vos amis.');
+                    $('#bloomJoinName').textContent = info.Name;
+                    $('#bloomJoinUrl').textContent = info.Url;
+                    $('#bloomJoinFp').textContent = info.Fingerprint;
+                    $('#bloomJoinPreview').classList.remove('bloom-hidden');
+                } catch (err) {
+                    message(msg, err.message, 'error');
+                }
+            });
+
+            $('#bloomAccept').addEventListener('click', async function () {
+                var msg = $('#bloomJoinMsg');
+                var button = this;
+                button.disabled = true;
+                message(msg, 'Échange des clés avec le serveur de votre ami…');
+                try {
+                    var res = await call('POST', 'Invites/Accept', { Code: $('#bloomJoinCode').value.trim(), SharedLibraryIds: checkedLibs($('#bloomJoinLibs')) });
+                    message(msg, 'Vous êtes maintenant fédéré avec ' + res.Name + '. Première synchronisation en cours…', 'success');
+                    $('#bloomJoinCode').value = '';
+                    $('#bloomJoinPreview').classList.add('bloom-hidden');
+                    await load();
+                } catch (err) {
+                    message(msg, err.message, 'error');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            $('#bloomPeers').addEventListener('click', async function (e) {
+                var button = e.target.closest('button[data-action]');
+                if (!button) return;
+                var card = button.closest('[data-peer]');
+                var peerId = card.getAttribute('data-peer');
+                var peer = state.Peers.filter(function (p) { return p.Id === peerId; })[0];
+                var msg = card.querySelector('[data-role="msg"]');
+                var action = button.getAttribute('data-action');
+                try {
+                    if (action === 'save') {
+                        var imports = Array.prototype.map.call(card.querySelectorAll('select[data-import]'), function (sel) {
+                            var v = sel.value;
+                            return v.indexOf('merge:') === 0
+                                ? { RemoteLibraryId: sel.getAttribute('data-import'), Mode: 'Merge', TargetLibrary: v.substring(6) }
+                                : { RemoteLibraryId: sel.getAttribute('data-import'), Mode: v === 'separate' ? 'Separate' : 'Ignore' };
+                        });
+                        await call('POST', 'Peers/' + encodeURIComponent(peerId), {
+                            Enabled: card.querySelector('[data-role="enabled"]').checked,
+                            SharedLibraryIds: checkedLibs(card.querySelector('[data-role="shares"]')),
+                            Imports: imports
+                        });
+                        message(msg, 'Enregistré. Mise à jour des bibliothèques en cours…', 'success');
+                        setTimeout(load, 1500);
+                    } else if (action === 'sync') {
+                        button.disabled = true;
+                        message(msg, 'Synchronisation…');
+                        await call('POST', 'Peers/' + encodeURIComponent(peerId) + '/Sync');
+                        await load();
+                    } else if (action === 'remove') {
+                        if (!window.confirm('Retirer ' + peer.Name + ' ? Ses films disparaîtront de vos bibliothèques, et les vôtres des siennes.')) return;
+                        await call('DELETE', 'Peers/' + encodeURIComponent(peerId));
+                        await load();
+                    }
+                } catch (err) {
+                    message(msg, err.message, 'error');
+                    button.disabled = false;
+                }
+            });
+
+            page.addEventListener('pageshow', load);
+            page.addEventListener('viewshow', load);
+            if (window.ApiClient) load();
+        })();
+    </script>
+</div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Deux serveurs Jellyfin 12.4 locaux pour tester la fédération :
+#   Alice : http://localhost:8101   Bob : http://localhost:8102
+# URL « publiques » : http://alice.localtest.me:8101 et http://bob.localtest.me:8102.
+# *.localtest.me pointe vers 127.0.0.1 sur votre machine, et vers l'hôte dans les conteneurs (extra_hosts),
+# donc ces URL marchent à la fois entre les serveurs et depuis votre navigateur.
+# Usage : ./dev/e2e.sh (construit le plugin, prépare les médias, lance et teste tout).
+services:
+  alice:
+    image: jellyfin/jellyfin:12.4
+    container_name: bloom-alice
+    hostname: alice
+    ports: ["8101:8096"]
+    extra_hosts: &hosts
+      - "alice.localtest.me:host-gateway"
+      - "bob.localtest.me:host-gateway"
+    volumes:
+      - ./data/alice/config:/config
+      - ./data/alice/cache:/cache
+      - ./data/alice/media:/media
+  bob:
+    image: jellyfin/jellyfin:12.4
+    container_name: bloom-bob
+    hostname: bob
+    ports: ["8102:8096"]
+    extra_hosts: *hosts
+    volumes:
+      - ./data/bob/config:/config
+      - ./data/bob/cache:/cache
+      - ./data/bob/media:/media

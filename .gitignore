@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+artifacts/
+dev/data/
+.DS_Store
+out/
+*.zip
+__pycache__/
