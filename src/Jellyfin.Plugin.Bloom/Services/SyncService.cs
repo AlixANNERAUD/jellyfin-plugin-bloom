@@ -127,13 +127,16 @@ public sealed class SyncService : IDisposable
             _logger.LogInformation("Bloom: {Peer} sleeps when idle, it will be synced when it wakes up", asleep.Name);
         }
 
+        // What we own is the same for every friend (their items never count as ours): index it once for the
+        // whole run. A failed attempt is not kept, the next friend tries again.
+        var owned = new Lazy<OwnedIndex>(BuildOwnedIndex, LazyThreadSafetyMode.PublicationOnly);
         var peers = active.Where(p => !p.IsAsleep(now)).Select(p => p.Id).ToList();
         for (var i = 0; i < peers.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                await SyncPeerAsync(peers[i], cancellationToken).ConfigureAwait(false);
+                await SyncPeerAsync(peers[i], owned, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -153,7 +156,10 @@ public sealed class SyncService : IDisposable
     /// <param name="peerId">Server id.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Null on success, or the error message.</returns>
-    public async Task<string?> SyncPeerAsync(string peerId, CancellationToken cancellationToken)
+    public Task<string?> SyncPeerAsync(string peerId, CancellationToken cancellationToken)
+        => SyncPeerAsync(peerId, null, cancellationToken);
+
+    private async Task<string?> SyncPeerAsync(string peerId, Lazy<OwnedIndex>? owned, CancellationToken cancellationToken)
     {
         // What a sync writes (tags in NFO files, the error shown on the friend's card) is in the server's language,
         // even when the admin page (in another language) started it: the page's language flows into this task.
@@ -183,7 +189,7 @@ public sealed class SyncService : IDisposable
             string? error = null;
             try
             {
-                await SyncPeerCoreAsync(peer, run, cts.Token).ConfigureAwait(false);
+                await SyncPeerCoreAsync(peer, run, owned, cts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
@@ -399,7 +405,7 @@ public sealed class SyncService : IDisposable
 
     private string LibraryDir(string peerId, string remoteLibraryId) => Path.Combine(PeerDir(peerId), new string(remoteLibraryId.Where(char.IsLetterOrDigit).ToArray()));
 
-    private async Task SyncPeerCoreAsync(PeerRecord peer, SyncRun run, CancellationToken cancellationToken)
+    private async Task SyncPeerCoreAsync(PeerRecord peer, SyncRun run, Lazy<OwnedIndex>? sharedOwned, CancellationToken cancellationToken)
     {
         var endpoint = PeerEndpoint.From(peer);
         var settings = _store.Snapshot().Settings;
@@ -448,7 +454,7 @@ public sealed class SyncService : IDisposable
             import.CollectionType = library.CollectionType;
         }
 
-        var owned = settings.SkipOwnedItems ? BuildOwnedIndex() : null;
+        var owned = settings.SkipOwnedItems ? sharedOwned?.Value ?? BuildOwnedIndex() : null;
         var syncState = _store.LoadSyncState(peer.Id);
         FederationException? failure = null;
         try
