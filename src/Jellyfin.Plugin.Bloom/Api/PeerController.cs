@@ -38,6 +38,7 @@ public class PeerController : ControllerBase
     private readonly PairingService _pairing;
     private readonly CatalogService _catalog;
     private readonly SyncService _sync;
+    private readonly PeerClient _client;
     private readonly ILibraryManager _libraryManager;
     private readonly ILogger<PeerController> _logger;
 
@@ -50,6 +51,7 @@ public class PeerController : ControllerBase
     /// <param name="pairing">Pairing.</param>
     /// <param name="catalog">Catalog.</param>
     /// <param name="sync">Sync.</param>
+    /// <param name="client">Peer client.</param>
     /// <param name="libraryManager">Library manager.</param>
     /// <param name="logger">Logger.</param>
     public PeerController(
@@ -59,6 +61,7 @@ public class PeerController : ControllerBase
         PairingService pairing,
         CatalogService catalog,
         SyncService sync,
+        PeerClient client,
         ILibraryManager libraryManager,
         ILogger<PeerController> logger)
     {
@@ -68,6 +71,7 @@ public class PeerController : ControllerBase
         _pairing = pairing;
         _catalog = catalog;
         _sync = sync;
+        _client = client;
         _libraryManager = libraryManager;
         _logger = logger;
     }
@@ -106,8 +110,13 @@ public class PeerController : ControllerBase
                     return null;
                 }
 
-                // The new friend signs with the key it announces.
-                return pairRequest is not null && pairRequest.Id == sender ? pairRequest.Key : null;
+                // The new friend signs with the key it announces, and its id is derived from that key.
+                return pairRequest is not null
+                    && pairRequest.Id == sender
+                    && ServerIdentity.IsValidPublicKey(pairRequest.Key)
+                    && ServerIdentity.ComputeServerId(pairRequest.Key) == sender
+                    ? pairRequest.Key
+                    : null;
             }).ConfigureAwait(false);
 
         if (verified.Error is not null)
@@ -149,6 +158,12 @@ public class PeerController : ControllerBase
         }
 
         var url = PairingService.NormalizeUrl(hello?.Url);
+        if (url is not null && url != verified.Peer!.Url && !await _client.ServesPeerAsync(url, verified.Peer, HttpContext.RequestAborted).ConfigureAwait(false))
+        {
+            _logger.LogWarning("Bloom: {Peer} announced a new address {Url} that does not answer as {Peer}, keeping {Old}", verified.Peer.Name, url, verified.Peer.Name, verified.Peer.Url);
+            url = null;
+        }
+
         _store.UpdatePeer(verified.Peer!.Id, p =>
         {
             p.LastSeen = DateTime.UtcNow;
@@ -411,14 +426,14 @@ public class PeerController : ControllerBase
         string sender = headers[FedProtocol.HeaderSender].ToString();
         string nonce = headers[FedProtocol.HeaderNonce].ToString();
         var signature = FedProtocol.TryDecodeBase64Url(headers[FedProtocol.HeaderSignature].ToString());
-        if (string.IsNullOrEmpty(sender) || string.IsNullOrEmpty(nonce) || nonce.Length > 64 || signature is null
+        if (!FedProtocol.IsServerId(sender) || string.IsNullOrEmpty(nonce) || nonce.Length > 64 || signature is null
             || !long.TryParse(headers[FedProtocol.HeaderTimestamp].ToString(), NumberStyles.None, CultureInfo.InvariantCulture, out var timestamp))
         {
             return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "UnsignedRequest"));
         }
 
-        var skew = TimeSpan.FromSeconds(Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp));
-        if (skew > FedProtocol.MaxClockSkew)
+        // In seconds, as integers: any timestamp (even absurd) is just "too far off", never an overflow.
+        if (Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp) > (long)FedProtocol.MaxClockSkew.TotalSeconds)
         {
             return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "ClockSkew"));
         }
@@ -463,7 +478,10 @@ public class PeerController : ControllerBase
 
         if (!_nonces.TryUse(sender, nonce))
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "ReplayedRequest"));
+            // Full: a flood of requests. 503 makes friends' servers try again a bit later.
+            return new Verified(_nonces.IsFull
+                ? Unsigned(StatusCodes.Status503ServiceUnavailable, "Busy")
+                : Unsigned(StatusCodes.Status401Unauthorized, "ReplayedRequest"));
         }
 
         return new Verified(null) { Nonce = nonce, Body = body };

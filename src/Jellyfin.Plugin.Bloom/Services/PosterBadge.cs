@@ -17,6 +17,9 @@ public static class PosterBadge
 {
     private const int MaxLabelLength = 18;
 
+    /// <summary>About 25 megapixels (100 MB decoded): a 4K backdrop is 8, a large poster 6.</summary>
+    private const long MaxPixels = 25_000_000;
+
     private static readonly SKColor Background = new(0, 0, 0, 175);
 
     private static readonly SKColor Accent = new(0x00, 0xA4, 0xDC);
@@ -83,6 +86,13 @@ public static class PosterBadge
         {
             // Rotated (EXIF) images would get the badge in the wrong corner: leave them alone.
             if (codec is null || codec.EncodedOrigin != SKEncodedOrigin.TopLeft)
+            {
+                return false;
+            }
+
+            // The file is at most 25 MB, but a small file can declare huge dimensions: decoding allocates
+            // 4 bytes per pixel, so a crafted image could exhaust memory. Real posters are far below this.
+            if ((long)codec.Info.Width * codec.Info.Height > MaxPixels)
             {
                 return false;
             }

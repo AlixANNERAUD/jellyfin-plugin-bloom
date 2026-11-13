@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.2
+
+Fixes from a review of the code.
+
+- Security: requests between servers are checked more strictly before anything is stored (sender id, absurd
+  timestamps, invites without a token), and the memory used against replayed requests is capped.
+- Security: Bloom no longer follows redirects, and only follows a friend to a new address once that address
+  answers with the friend's identity. A friend's server can no longer send your server's requests elsewhere.
+- Security: playback links now expire after 30 to 60 days (friends get fresh ones at each sync), and pairing
+  again with a friend revokes the old ones.
+- A friend's server can no longer exhaust your server's memory with a huge poster or answer.
+- Renaming the library a friend's items are merged into no longer removes them: Bloom follows the new name.
+  A library that was deleted no longer stops the friend's other libraries from syncing.
+- Changing the folder for friends' media now moves their items instead of importing them twice.
+- Tags on friends' items are always in the server's language, even when a sync is started from the settings
+  page in another language.
+- Emoji in titles and summaries are kept.
+- The settings page no longer throws away unsaved changes to a friend while a sync runs.
+- Unusual error answers from a friend's server no longer break removing that friend.
+- The release workflow can no longer drop earlier versions from the plugin repository.
+
 ## 0.2.1
 
 - Servers that sleep when idle are supported: a proxy such as nginx-hibernator or Sablier stops Jellyfin and

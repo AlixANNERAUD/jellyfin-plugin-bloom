@@ -135,7 +135,7 @@ public class AdminController : ControllerBase
     /// <param name="request">Settings.</param>
     /// <returns>Nothing.</returns>
     [HttpPost("Settings")]
-    public ActionResult SaveSettings([FromBody] FederationSettings request)
+    public async Task<ActionResult> SaveSettings([FromBody] FederationSettings request)
     {
         string? url = null;
         if (!string.IsNullOrWhiteSpace(request.PublicUrl))
@@ -164,7 +164,6 @@ public class AdminController : ControllerBase
         {
             s.Settings.PublicUrl = url;
             s.Settings.ServerName = string.IsNullOrWhiteSpace(request.ServerName) ? null : request.ServerName.Trim();
-            s.Settings.MediaRoot = mediaRoot;
             s.Settings.SkipOwnedItems = request.SkipOwnedItems;
             s.Settings.NotifyPeersOnChange = request.NotifyPeersOnChange;
             s.Settings.BadgePosters = request.BadgePosters;
@@ -199,9 +198,14 @@ public class AdminController : ControllerBase
             }
         }
 
-        if (!string.Equals(previousRoot, _store.GetMediaRoot(), StringComparison.Ordinal))
+        if (!string.Equals(previousRoot, _store.MediaRootFor(mediaRoot), StringComparison.Ordinal))
         {
-            _logger.LogWarning("Bloom: media root changed from {Old} to {New}; remove and re-add friends' libraries to move them", previousRoot, _store.GetMediaRoot());
+            _logger.LogInformation("Bloom: moving friends' items from {Old} to {New}", previousRoot, _store.MediaRootFor(mediaRoot));
+            await _sync.MoveMediaRootAsync(() => _store.Update(s => s.Settings.MediaRoot = mediaRoot)).ConfigureAwait(false);
+        }
+        else
+        {
+            _store.Update(s => s.Settings.MediaRoot = mediaRoot);
         }
 
         return NoContent();

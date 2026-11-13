@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.Bloom.Services;
-using MediaBrowser.Common.Net;
 using MediaBrowser.Model.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -84,7 +83,7 @@ public sealed class FederatedDownloadFilter : IAsyncResultFilter
             var http = context.HttpContext;
             var services = http.RequestServices;
             var logger = services.GetRequiredService<ILogger<FederatedDownloadFilter>>();
-            var client = services.GetRequiredService<IHttpClientFactory>().CreateClient(NamedClient.Default);
+            var client = services.GetRequiredService<IHttpClientFactory>().CreateClient(PeerClient.HttpClientName);
 
             HttpResponseMessage response;
             try

@@ -171,6 +171,8 @@ c'est **votre** serveur qui transcode.
   traiter comme un nouveau film, et l'historique de ce film est perdu.
 - **Infuse** n'affiche le badge qu'en mode *Direct* : en mode *Bibliothèque*, il utilise ses propres affiches.
 - Bloom écrit les éléments de vos amis dans `<données Jellyfin>/bloom/media` (modifiable). Ne les éditez pas à la main.
+  Changer ce dossier retire les éléments de vos amis puis les importe de nouveau dans le nouveau dossier : leur
+  historique de lecture repart de zéro.
 - Les clés et secrets sont dans `<données Jellyfin>/bloom/`, lisibles par Jellyfin seulement. Gardez ce dossier dans
   vos sauvegardes : perdre `identity.key` revient à changer d'identité, et vos amis devraient vous ré-inviter.
 
@@ -199,8 +201,8 @@ c'est **votre** serveur qui transcode.
    `poster.jpg` et sous-titres. Ce dossier est ajouté à votre bibliothèque, et Jellyfin l'indexe comme n'importe quel
    film.
 5. Le `.strm` contient l'URL du flux chez l'ami avec un **jeton de lecture** (HMAC, valable pour ce film et pour
-   votre serveur seulement). Selon l'appareil, le lecteur lit directement chez l'ami, ou votre serveur relaie et
-   transcode.
+   votre serveur seulement, pendant 30 à 60 jours : chaque synchronisation en apporte de nouveaux). Selon
+   l'appareil, le lecteur lit directement chez l'ami, ou votre serveur relaie et transcode.
 
 Après chaque analyse de bibliothèque, Bloom regroupe les copies d'un même film ou épisode (reconnues par
 identifiant TMDB, IMDb ou TVDB, puis comparées par taille de fichier) avec la fonction « versions » de Jellyfin.

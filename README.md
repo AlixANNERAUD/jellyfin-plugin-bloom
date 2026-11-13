@@ -162,7 +162,8 @@ typical 1080p file, 25–80 Mbit/s for 4K. If your device can't play the format,
 - Each server keeps its own watch history. If a friend renames or re-identifies a movie, Jellyfin may see it as
   new, and the history of that movie is lost.
 - **Infuse** shows the badge in *Direct* mode only: in *Library* mode it uses its own posters.
-- Bloom writes friends' items to `<Jellyfin data>/bloom/media` (configurable). Don't edit them by hand.
+- Bloom writes friends' items to `<Jellyfin data>/bloom/media` (configurable). Don't edit them by hand. Changing
+  that folder removes friends' items and imports them again in the new one: their watch history starts over.
 - Keys and secrets are in `<Jellyfin data>/bloom/`, readable by Jellyfin only. Keep that folder in your
   backups: losing `identity.key` means a new identity, and your friends would have to invite you again.
 
@@ -191,8 +192,8 @@ typical 1080p file, 25–80 Mbit/s for 4K. If your device can't play the format,
    plus `.nfo`, `poster.jpg` and subtitles. That folder is added to your library, and Jellyfin indexes it like
    any other movie.
 5. The `.strm` file holds the stream URL on the friend's server with a **playback token** (HMAC, valid for that
-   movie and your server only). Depending on the device, the player reads straight from the friend, or your
-   server relays and transcodes.
+   movie and your server only, for 30 to 60 days: each sync brings fresh ones). Depending on the device, the
+   player reads straight from the friend, or your server relays and transcodes.
 
 After each library scan, Bloom groups the copies of the same movie or episode (matched by TMDB, IMDb or TVDB
 id, then compared by file size) using Jellyfin's own versions feature.
@@ -216,6 +217,10 @@ Signed requests carry `X-Bloom-Sender`, `X-Bloom-Timestamp`, `X-Bloom-Nonce` and
 P-256 signature covers the method, the path from `/Bloom/Peer/` on (so reverse proxy prefixes don't break it),
 the query, the recipient, the sender, the timestamp, the nonce and the SHA-256 of the body. JSON answers are
 signed by the recipient and bound to the request's nonce.
+
+Bloom only follows a friend to a new address once that address answers `/Bloom/Peer/Info` with the friend's id
+and key, and never follows redirects: a friend's server cannot send your server's requests elsewhere, such as
+to your own network.
 
 ## Development
 

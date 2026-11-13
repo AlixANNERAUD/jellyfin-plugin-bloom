@@ -81,6 +81,46 @@ public class CryptoTests
     }
 
     [Fact]
+    public void StreamTokensExpireAfterTheNextPeriod()
+    {
+        var secret = StreamTokens.NewSecret();
+        var item = Guid.NewGuid();
+        const long Period = 20_000;
+        var token = StreamTokens.Compute(secret, item, Period);
+        DateTimeOffset In(long period) => DateTimeOffset.FromUnixTimeSeconds((period * (long)StreamTokens.Period.TotalSeconds) + 5);
+
+        Assert.True(StreamTokens.Verify(secret, item, token, In(Period)));
+        Assert.True(StreamTokens.Verify(secret, item, token, In(Period + 1)));
+        Assert.False(StreamTokens.Verify(secret, item, token, In(Period + 2)));
+        Assert.False(StreamTokens.Verify(secret, item, token, In(Period - 1)));
+        Assert.Equal(Period, StreamTokens.PeriodOf(In(Period)));
+    }
+
+    [Fact]
+    public void ServerIdsAreWellFormed()
+    {
+        Assert.True(FedProtocol.IsServerId(ServerIdentity.ComputeServerId(Convert.ToBase64String(new byte[] { 1, 2, 3 }))));
+        Assert.False(FedProtocol.IsServerId(null));
+        Assert.False(FedProtocol.IsServerId(new string('a', 33)));
+        Assert.False(FedProtocol.IsServerId(new string('A', 32)));
+        Assert.False(FedProtocol.IsServerId(new string('x', 30_000)));
+    }
+
+    [Fact]
+    public void TheNonceCacheStopsGrowingWhenFull()
+    {
+        var cache = new NonceCache();
+        for (var i = 0; i < NonceCache.Capacity; i++)
+        {
+            Assert.True(cache.TryUse("a", i.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        Assert.True(cache.IsFull);
+        Assert.False(cache.TryUse("a", "one more"));
+        Assert.False(cache.TryUse("a", "0"));
+    }
+
+    [Fact]
     public void StreamTokensAreBoundToSecretAndItem()
     {
         var secret = StreamTokens.NewSecret();

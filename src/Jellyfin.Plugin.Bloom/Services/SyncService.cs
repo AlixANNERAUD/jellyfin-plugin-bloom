@@ -155,9 +155,15 @@ public sealed class SyncService : IDisposable
     /// <returns>Null on success, or the error message.</returns>
     public async Task<string?> SyncPeerAsync(string peerId, CancellationToken cancellationToken)
     {
+        // What a sync writes (tags in NFO files, the error shown on the friend's card) is in the server's language,
+        // even when the admin page (in another language) started it: the page's language flows into this task.
+        Text.UseRequestLanguage(null);
+
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(SyncDeadline);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        // The deadline counts from here: waiting behind another friend's sync does not use it up.
+        cts.CancelAfter(SyncDeadline);
         _running[peerId] = cts;
         var run = new SyncRun();
         try
@@ -165,7 +171,7 @@ public sealed class SyncService : IDisposable
             var peer = _store.FindPeer(peerId);
             if (peer is null)
             {
-                return "Ami inconnu.";
+                return Text.Get("UnknownFriend");
             }
 
             if (!peer.Enabled || peer.RevokedByPeer)
@@ -183,7 +189,7 @@ public sealed class SyncService : IDisposable
             {
                 error = Text.Get("SyncInterrupted");
             }
-            catch (PeerRequestException ex)
+            catch (Exception ex) when (ex is PeerRequestException or FederationException)
             {
                 error = ex.Message;
             }
@@ -198,7 +204,7 @@ public sealed class SyncService : IDisposable
                 // Persist what was done even on failure (e.g. a library created before the error).
                 _store.UpdatePeer(peerId, p =>
                 {
-                    MergeImports(p, peer.Imports);
+                    MergeImports(p, peer.Imports, _libraries.Exists);
                     p.Sleeps = peer.Sleeps;
                     if (!string.IsNullOrWhiteSpace(peer.Name))
                     {
@@ -279,6 +285,37 @@ public sealed class SyncService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Moves friends' items to another folder: removes them from the current one (and from the libraries), applies
+    /// the new folder, then imports them again. Their files cannot simply be moved: Jellyfin knows them by path.
+    /// </summary>
+    /// <param name="applyNewRoot">Saves the new folder setting.</param>
+    /// <returns>A task.</returns>
+    public async Task MoveMediaRootAsync(Action applyNewRoot)
+    {
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            foreach (var peer in _store.Snapshot().Peers)
+            {
+                await RemoveImportedContentAsync(peer).ConfigureAwait(false);
+            }
+
+            applyNewRoot();
+            _catalog.Invalidate();
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        // Asked for by the admin: friends that sleep are woken up too, or their items would be missing until then.
+        foreach (var peer in _store.Snapshot().Peers.Where(p => p.Enabled && !p.RevokedByPeer))
+        {
+            QueueSync(peer.Id, TimeSpan.FromSeconds(2));
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {
@@ -294,7 +331,7 @@ public sealed class SyncService : IDisposable
     /// Copies what a sync computed into the stored friend, keeping the import choices
     /// (mode, target) the admin may have changed while the sync was running.
     /// </summary>
-    private static void MergeImports(PeerRecord stored, List<ImportRecord> synced)
+    private static void MergeImports(PeerRecord stored, List<ImportRecord> synced, Func<string?, bool> libraryExists)
     {
         stored.Imports.RemoveAll(i => synced.All(s => s.RemoteLibraryId != i.RemoteLibraryId));
         foreach (var s in synced)
@@ -314,7 +351,12 @@ public sealed class SyncService : IDisposable
 
             // What exists on the server, whatever the admin chose meanwhile (next sync reconciles).
             current.CreatedLibrary = s.CreatedLibrary;
-            current.TargetLibrary ??= s.TargetLibrary;
+
+            // Unless the admin picked one meanwhile, or the one stored was renamed (the sync found its new name).
+            if (current.TargetLibrary is null || !libraryExists(current.TargetLibrary))
+            {
+                current.TargetLibrary = s.TargetLibrary;
+            }
         }
     }
 
@@ -408,6 +450,7 @@ public sealed class SyncService : IDisposable
 
         var owned = settings.SkipOwnedItems ? BuildOwnedIndex() : null;
         var syncState = _store.LoadSyncState(peer.Id);
+        FederationException? failure = null;
         try
         {
             foreach (var import in peer.Imports)
@@ -457,7 +500,18 @@ public sealed class SyncService : IDisposable
                 import.SkippedCount = result.Skipped;
                 import.VersionCount = result.Versions;
                 run.Changed |= result.Changed;
-                run.Changed |= await _libraries.EnsureAttachedAsync(import, peer.Name, dir).ConfigureAwait(false);
+                try
+                {
+                    run.Changed |= await _libraries.EnsureAttachedAsync(import, peer.Name, dir).ConfigureAwait(false);
+                }
+                catch (FederationException ex)
+                {
+                    // One library gone (deleted target): still sync the friend's other libraries.
+                    _logger.LogWarning("Bloom: {Peer}/{Library}: {Message}", peer.Name, import.RemoteLibraryName, ex.Message);
+                    failure ??= ex;
+                    continue;
+                }
+
                 _logger.LogInformation(
                     "Bloom: {Peer}/{Library}: {Imported} items, {Skipped} already owned",
                     peer.Name,
@@ -469,6 +523,11 @@ public sealed class SyncService : IDisposable
         finally
         {
             _store.SaveSyncState(peer.Id, syncState);
+        }
+
+        if (failure is not null)
+        {
+            throw failure;
         }
     }
 

@@ -414,6 +414,12 @@ def main():
     code, res = request(SERVERS["alice"]["host"], "GET", f"/Bloom/Peer/Catalog?library={lib}",
                         headers={"X-Bloom-Sender": bob_id, "X-Bloom-Timestamp": str(int(time.time())), "X-Bloom-Nonce": "abc", "X-Bloom-Signature": "AAAA"})
     check(code == 401, "catalogue refusé avec une fausse signature de Bob")
+    code, res = request(SERVERS["alice"]["host"], "POST", "/Bloom/Peer/Libraries", {},
+                        headers={"X-Bloom-Sender": bob_id, "X-Bloom-Timestamp": "99999999999999999", "X-Bloom-Nonce": "abc", "X-Bloom-Signature": "AAAA"})
+    check(code == 401 and isinstance(res, dict) and res.get("code") == "ClockSkew", "horodatage absurde → 401, pas d'erreur 500")
+    code, res = request(SERVERS["alice"]["host"], "POST", "/Bloom/Peer/Pair", {},
+                        headers={"X-Bloom-Sender": "a" * 20000, "X-Bloom-Timestamp": str(int(time.time())), "X-Bloom-Nonce": "abc", "X-Bloom-Signature": "AAAA"})
+    check(code == 401, "identifiant d'expéditeur géant refusé d'emblée")
 
     if os.environ.get("DEMO") == "1":
         print()
@@ -480,6 +486,35 @@ def main():
     _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
     check(code == 204 and not st_bob["Peers"][0].get("Sleeps") and st_bob["Peers"][0]["Url"] == SERVERS["alice"]["internal"], "Alice décoche la veille : Bob le sait")
     proxy.server.shutdown()
+
+    print("== Bibliothèque renommée, dossier des amis déplacé")
+    q = urllib.parse.urlencode({"name": "Movies", "newName": "Films de Bob", "refreshLibrary": "false"})
+    code, _ = api("bob", "POST", "/Library/VirtualFolders/Name?" + q)
+    check(code in (200, 204), "Bob renomme « Movies » en « Films de Bob »")
+    code, res = api("bob", "POST", f"/Bloom/Admin/Peers/{alice_id}/Sync")
+    wait_idle("bob")
+    _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+    imports = {i["RemoteLibraryName"]: i for i in st_bob["Peers"][0]["Imports"]}
+    check(code == 200 and imports["Films"].get("TargetLibrary") == "Films de Bob", f"Bloom suit le nouveau nom ({res})")
+    check("Le Grand Test" in titles("bob", "Movie"), "… et les films d'Alice restent dans la bibliothèque")
+
+    before = titles("bob", "Movie")
+    moved = "/config/data/bloom/moved"
+    code, _ = api("bob", "POST", "/Bloom/Admin/Settings", {"PublicUrl": SERVERS["bob"]["internal"], "ServerName": "Bob", "SkipOwnedItems": True, "NotifyPeersOnChange": True, "MediaRoot": moved})
+    check(code == 204, "Bob change le dossier des médias de ses amis")
+    for _ in range(120):
+        _, st_bob = api("bob", "GET", "/Bloom/Admin/Status")
+        if not st_bob["Peers"][0]["Busy"] and os.path.isdir(f"data/bob/config/data/bloom/moved/{alice_id}"):
+            break
+        time.sleep(1)
+    time.sleep(3)
+    wait_idle("bob")
+    after = titles("bob", "Movie")
+    print("     films chez Bob :", after)
+    check(after == before, "les films d'Alice sont réimportés dans le nouveau dossier, sans doublon")
+    check(not os.path.exists(f"data/bob/config/data/bloom/media/{alice_id}"), "… et l'ancien dossier a été vidé")
+    movie = next(i for i in items("bob", "Movie") if i["Name"] == "Le Grand Test")
+    check(movie["Path"].startswith(moved + "/"), "… les films d'Alice viennent bien du nouveau dossier")
 
     print("== Retrait du partage puis fin de la fédération")
     movies_lib = next(l["Id"] for l in status["alice"]["ShareableLibraries"] if l["CollectionType"] == "movies")

@@ -214,6 +214,13 @@ public sealed class FederationStore
     }
 
     /// <summary>
+    /// Gets the root friends' items would be written to with this setting.
+    /// </summary>
+    /// <param name="mediaRoot">Setting value (null for the default).</param>
+    /// <returns>Absolute path.</returns>
+    public string MediaRootFor(string? mediaRoot) => _paths.GetMediaRoot(new FederationSettings { MediaRoot = mediaRoot });
+
+    /// <summary>
     /// Loads the per-friend sync state.
     /// </summary>
     /// <param name="peerId">Server id.</param>

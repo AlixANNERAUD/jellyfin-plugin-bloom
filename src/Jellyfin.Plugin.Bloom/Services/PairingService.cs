@@ -21,8 +21,9 @@ public sealed class FederationException : Exception
     /// Initializes a new instance of the <see cref="FederationException"/> class.
     /// </summary>
     /// <param name="key">Text key (see <see cref="Text"/>).</param>
-    public FederationException(string key)
-        : base(Text.Get(key))
+    /// <param name="args">Values for the placeholders of the text.</param>
+    public FederationException(string key, params object?[] args)
+        : base(Text.Get(key, args))
     {
         Key = key;
     }
@@ -255,6 +256,11 @@ public sealed class PairingService
         }
 
         var url = NormalizeUrl(request.Url) ?? throw new FederationException("InvalidUrl");
+        if (string.IsNullOrEmpty(request.Token))
+        {
+            throw new FederationException("UnknownInvite");
+        }
+
         var hash = FedProtocol.HashSecret(request.Token);
         var name = string.IsNullOrWhiteSpace(request.Name) ? url : request.Name.Trim();
 
@@ -273,6 +279,9 @@ public sealed class PairingService
                 existing.Url = url;
                 existing.Name = name;
                 existing.RevokedByPeer = false;
+
+                // Pairing again starts over: stream links handed out before stop working.
+                existing.StreamSecret = StreamTokens.NewSecret();
                 existing.SharedLibraryIds = existing.SharedLibraryIds.Union(invite.SharedLibraryIds).ToList();
                 return true;
             }

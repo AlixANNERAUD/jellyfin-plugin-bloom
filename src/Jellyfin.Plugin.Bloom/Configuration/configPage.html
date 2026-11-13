@@ -64,6 +64,7 @@
                         <label class="inputLabel inputLabelUnfocused" for="bloomMediaRoot" data-i18n="mediaRoot"></label>
                         <input id="bloomMediaRoot" type="text" is="emby-input" />
                         <div class="fieldDescription"><span data-i18n="mediaRootHelp"></span> <span id="bloomDefaultRoot"></span></div>
+                        <div class="fieldDescription" data-i18n="mediaRootMove"></div>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
@@ -178,6 +179,7 @@
                     serverNameHelp: 'Leave empty to use the Jellyfin server name.',
                     mediaRoot: 'Folder for friends\' media',
                     mediaRootHelp: 'Where the .strm and .nfo files and the posters of your friends\' movies are written (a few KB per movie). Empty:',
+                    mediaRootMove: 'Changing it moves your friends\' items: they are removed, then imported again in the new folder (their watch history starts over).',
                     skipOwned: 'Don\'t import what I already have',
                     skipOwnedHelp: 'Movies and episodes you already own (same TMDB, IMDb or TVDB id) aren\'t duplicated. Episodes you\'re missing in a show are still added.',
                     versions: 'Offer other versions (movies and episodes)',
@@ -265,6 +267,7 @@
                     serverNameHelp: 'Laissez vide pour utiliser le nom du serveur Jellyfin.',
                     mediaRoot: 'Dossier des médias fédérés',
                     mediaRootHelp: 'Où sont écrits les fichiers .strm/.nfo/affiches des films de vos amis (quelques Ko par film). Vide =',
+                    mediaRootMove: 'Le changer déplace les éléments de vos amis : ils sont retirés, puis importés de nouveau dans le nouveau dossier (leur historique de lecture repart de zéro).',
                     skipOwned: 'Ne pas importer ce que j\'ai déjà',
                     skipOwnedHelp: 'Les films et épisodes que vous possédez déjà (même identifiant TMDB/IMDb/TVDB) ne sont pas dupliqués. Les épisodes qui vous manquent dans une série sont quand même ajoutés.',
                     versions: 'Proposer les autres versions (films et épisodes)',
@@ -489,6 +492,10 @@
             function renderPeers() {
                 var container = $('#bloomPeers');
                 var peers = state.Peers || [];
+                var editing = {};
+                Array.prototype.forEach.call(container.querySelectorAll('[data-peer][data-editing]'), function (card) {
+                    editing[card.getAttribute('data-peer')] = card;
+                });
                 if (!peers.length) {
                     container.innerHTML = '<p class="bloom-muted">' + esc(t('noFriends')) + '</p>';
                     return;
@@ -530,16 +537,28 @@
                     '</div>';
                 }).join('');
 
+                // Cards the admin is editing are put back as they were (only their status is refreshed):
+                // re-rendering them while a sync runs would throw away unsaved changes.
+                Array.prototype.forEach.call(Object.keys(editing), function (id) {
+                    var fresh = container.querySelector('[data-peer="' + id + '"]');
+                    var old = editing[id];
+                    if (!fresh) return;
+                    old.querySelector('.bloom-pill').outerHTML = fresh.querySelector('.bloom-pill').outerHTML;
+                    old.querySelector('[data-action="sync"]').disabled = fresh.querySelector('[data-action="sync"]').disabled;
+                    fresh.replaceWith(old);
+                });
+
                 var busy = peers.some(function (p) { return p.Busy; });
                 clearTimeout(pollTimer);
-                if (busy) pollTimer = setTimeout(load, 3000);
+                if (busy) pollTimer = setTimeout(function () { load(true); }, 3000);
             }
 
-            async function load() {
+            // poll: only refresh friends' status, leaving the forms (maybe being edited) alone.
+            async function load(poll) {
                 translatePage();
                 try {
                     state = await call('GET', 'Status');
-                    renderStatus();
+                    if (poll === true) renderPeers(); else renderStatus();
                 } catch (e) {
                     $('#bloomPeers').innerHTML = '<p class="bloom-msg error">' + esc(e.message) + '</p>';
                 }
@@ -633,6 +652,11 @@
                 }
             });
 
+            $('#bloomPeers').addEventListener('change', function (e) {
+                var card = e.target.closest('[data-peer]');
+                if (card) card.setAttribute('data-editing', '1');
+            });
+
             $('#bloomPeers').addEventListener('click', async function (e) {
                 var button = e.target.closest('button[data-action]');
                 if (!button) return;
@@ -655,6 +679,7 @@
                             Imports: imports
                         });
                         message(msg, t('savedUpdating'), 'success');
+                        card.removeAttribute('data-editing');
                         setTimeout(load, 1500);
                     } else if (action === 'sync') {
                         button.disabled = true;

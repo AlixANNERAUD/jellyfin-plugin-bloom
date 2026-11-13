@@ -179,9 +179,27 @@ public static class NfoBuilder
     }
 
     /// <summary>Removes characters that are invalid in XML 1.0.</summary>
-    private static string Clean(string value)
+    /// <summary>
+    /// Drops the characters XML cannot hold (control characters, lone surrogates), keeping emoji and other
+    /// characters outside the basic plane, which are written as surrogate pairs.
+    /// </summary>
+    internal static string Clean(string value)
     {
-        IEnumerable<char> valid = value.Where(XmlConvert.IsXmlChar);
-        return string.Concat(valid);
+        var result = new StringBuilder(value.Length);
+        for (var i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            if (XmlConvert.IsXmlChar(c))
+            {
+                result.Append(c);
+            }
+            else if (char.IsHighSurrogate(c) && i + 1 < value.Length && XmlConvert.IsXmlSurrogatePair(value[i + 1], c))
+            {
+                result.Append(c).Append(value[i + 1]);
+                i++;
+            }
+        }
+
+        return result.ToString();
     }
 }

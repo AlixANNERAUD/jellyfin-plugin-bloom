@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Text;
 using System.Globalization;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -107,6 +108,15 @@ public static class FedProtocol
     /// <param name="secret">Secret.</param>
     /// <returns>Hex SHA-256.</returns>
     public static string HashSecret(string secret) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(secret)));
+
+    /// <summary>
+    /// Whether a value looks like a server id (32 lowercase hex characters, see <see cref="ServerIdentity.ComputeServerId"/>).
+    /// Checked before anything else, so a caller cannot make us store or compare huge "ids".
+    /// </summary>
+    /// <param name="value">Value.</param>
+    /// <returns>Whether it is well formed.</returns>
+    public static bool IsServerId(string? value)
+        => value is { Length: 32 } && value.All(c => char.IsAsciiDigit(c) || (c >= 'a' && c <= 'f'));
 
     /// <summary>
     /// Decodes base64url, returning null when malformed.

@@ -76,6 +76,20 @@ public sealed class LibraryIntegration
             import.CreatedLibrary = holders.FirstOrDefault(h => OnlyHolds(h, directory))?.Name;
         }
 
+        // The admin renamed the library we merge into: it still holds our folder, under its new name.
+        if (import.Mode == ImportMode.Merge && !folders.Any(f => string.Equals(f.Name, import.TargetLibrary, StringComparison.Ordinal)))
+        {
+            var renamed = holders.FirstOrDefault(h => h.CollectionType == ToOptions(import.CollectionType) && !OnlyHolds(h, directory));
+            if (renamed is null)
+            {
+                // Deleted, not renamed: leave everything as it is and let the admin pick another library.
+                throw new FederationException("LibraryMissing", import.TargetLibrary);
+            }
+
+            _logger.LogInformation("Bloom: library {Old} was renamed {New}", import.TargetLibrary, renamed.Name);
+            import.TargetLibrary = renamed.Name;
+        }
+
         string? wanted = import.Mode switch
         {
             ImportMode.Merge => import.TargetLibrary,
@@ -97,12 +111,7 @@ public sealed class LibraryIntegration
 
         if (import.Mode == ImportMode.Merge)
         {
-            var target = folders.FirstOrDefault(f => string.Equals(f.Name, import.TargetLibrary, StringComparison.Ordinal));
-            if (target is null)
-            {
-                throw new InvalidOperationException(Text.Get("LibraryMissing", import.TargetLibrary));
-            }
-
+            var target = folders.First(f => string.Equals(f.Name, import.TargetLibrary, StringComparison.Ordinal));
             if (!target.Locations.Any(l => SamePath(l, directory)))
             {
                 _logger.LogInformation("Bloom: adding {Dir} to library {Library}", directory, target.Name);
@@ -147,6 +156,14 @@ public sealed class LibraryIntegration
     /// <param name="import">Import settings.</param>
     /// <param name="directory">Folder.</param>
     /// <returns>Whether something changed.</returns>
+    /// <summary>
+    /// Whether a library with this name exists.
+    /// </summary>
+    /// <param name="name">Library name.</param>
+    /// <returns>Whether it exists.</returns>
+    public bool Exists(string? name)
+        => name is not null && _libraryManager.GetVirtualFolders().Any(f => string.Equals(f.Name, name, StringComparison.Ordinal));
+
     public async Task<bool> DetachAsync(ImportRecord import, string directory)
     {
         var changed = false;

@@ -51,10 +51,12 @@ public static class Text
         ["UnknownServer"] = ("Unknown server: you are not (or no longer) one of this server's friends.", "Serveur inconnu : vous ne faites pas (ou plus) partie des amis de ce serveur."),
         ["InvalidSignature"] = ("Invalid signature.", "Signature invalide."),
         ["ReplayedRequest"] = ("Replayed request.", "Requête rejouée."),
+        ["Busy"] = ("This server is receiving too many requests, try again later.", "Ce serveur reçoit trop de requêtes, réessayez plus tard."),
         ["Timeout"] = ("Timed out contacting {0}", "Délai dépassé en contactant {0}"),
         ["Unreachable"] = ("Server unreachable: {0}", "Serveur injoignable : {0}"),
         ["UnsignedResponse"] = ("The answer isn't signed with this server's key (wrong URL, a proxy altering answers, or impersonation).", "La réponse n'est pas signée par la clé de ce serveur (mauvaise URL, proxy qui altère les réponses, ou usurpation)."),
         ["EmptyResponse"] = ("Empty answer.", "Réponse vide."),
+        ["ResponseTooLarge"] = ("Your friend's server sent an answer that is far too large.", "Le serveur de votre ami a envoyé une réponse beaucoup trop grosse."),
         ["UnreadableResponse"] = ("Unreadable answer.", "Réponse illisible."),
         ["HttpError"] = ("HTTP {0}", "HTTP {0}"),
         ["HttpErrorWithMessage"] = ("HTTP {0}: {1}", "HTTP {0} : {1}"),
@@ -107,6 +109,14 @@ public static class Text
     /// <param name="key">Key.</param>
     /// <returns>True if known.</returns>
     public static bool Has(string? key) => key is not null && All.ContainsKey(key);
+
+    /// <summary>
+    /// Whether a text exists and needs no values: the only ones a friend's error code may select.
+    /// </summary>
+    /// <param name="key">Text key.</param>
+    /// <returns>Whether it can be shown without arguments.</returns>
+    public static bool HasPlain(string? key)
+        => key is not null && All.TryGetValue(key, out var text) && !text.En.Contains('{', StringComparison.Ordinal) && !text.Fr.Contains('{', StringComparison.Ordinal);
 
     /// <summary>
     /// Gets a text in the current language.

@@ -1,3 +1,6 @@
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using Jellyfin.Plugin.Bloom.Api;
 using Jellyfin.Plugin.Bloom.Crypto;
 using Jellyfin.Plugin.Bloom.Services;
@@ -22,6 +25,16 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddSingleton(sp => ServerIdentity.LoadOrCreate(sp.GetRequiredService<FederationPaths>().IdentityFile));
         serviceCollection.AddSingleton<NonceCache>();
         serviceCollection.AddSingleton<PeerClient>();
+        serviceCollection.AddHttpClient(PeerClient.HttpClientName, client =>
+            {
+                client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Jellyfin-Bloom", typeof(Plugin).Assembly.GetName().Version?.ToString() ?? "0"));
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            {
+                // Friends' servers never redirect Bloom requests: following one could reach any address.
+                AllowAutoRedirect = false,
+                AutomaticDecompression = DecompressionMethods.All
+            });
         serviceCollection.AddSingleton<CatalogService>();
         serviceCollection.AddSingleton<LibraryIntegration>();
         serviceCollection.AddSingleton<SyncService>();
