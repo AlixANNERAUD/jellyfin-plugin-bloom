@@ -171,6 +171,11 @@ def main():
     check(code == 200 and res["Fingerprint"] == status["alice"]["Identity"]["Fingerprint"], "Info publique exposée")
     code, _ = request(SERVERS["alice"]["host"], "GET", "/Bloom/Admin/Status")
     check(code == 401, "API d'admin refusée sans authentification")
+    alice = SERVERS["alice"]
+    code, res = request(alice["host"], "POST", "/Bloom/Admin/Invites/Inspect", {"Code": "nonsense"}, token=alice["token"])
+    check(code == 400 and res.get("error") == "Ce n'est pas un code d'invitation Bloom.", "les messages suivent la langue du serveur (français)")
+    code, res = request(alice["host"], "POST", "/Bloom/Admin/Invites/Inspect", {"Code": "nonsense"}, token=alice["token"], headers={"X-Bloom-Language": "en-US"})
+    check(code == 400 and res.get("error") == "This is not a Bloom invite code.", "… ou celle de la page qui les demande (anglais)")
 
     print("== Invitation d'Alice → Bob (échange de clés)")
     alice_libs = [l["Id"] for l in status["alice"]["ShareableLibraries"]]

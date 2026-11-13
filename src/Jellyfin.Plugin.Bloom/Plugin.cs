@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Jellyfin.Plugin.Bloom.Configuration;
+using Jellyfin.Plugin.Bloom.Services;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
@@ -23,10 +25,12 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// </summary>
     /// <param name="applicationPaths">Application paths.</param>
     /// <param name="xmlSerializer">XML serializer.</param>
-    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
+    /// <param name="configuration">Server configuration (for the display language).</param>
+    public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, IServerConfigurationManager configuration)
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        Text.UseServerLanguage(configuration);
     }
 
     /// <summary>
@@ -41,7 +45,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override Guid Id => PluginId;
 
     /// <inheritdoc />
-    public override string Description => "Fédération entre serveurs Jellyfin amis : partagez vos bibliothèques, les films de vos amis apparaissent chez vous et sont lus depuis leur serveur.";
+    public override string Description => Text.Get("PluginDescription");
 
     /// <inheritdoc />
     public IEnumerable<PluginPageInfo> GetPages()

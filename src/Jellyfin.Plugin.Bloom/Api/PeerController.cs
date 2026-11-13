@@ -122,7 +122,7 @@ public class PeerController : ControllerBase
         catch (FederationException ex)
         {
             _logger.LogWarning("Bloom: pairing refused: {Message}", ex.Message);
-            return SignedError(StatusCodes.Status403Forbidden, ex.Message, verified.Nonce!);
+            return SignedError(StatusCodes.Status403Forbidden, ex.Key, verified.Nonce!);
         }
     }
 
@@ -186,12 +186,12 @@ public class PeerController : ControllerBase
 
         if (!Guid.TryParse(library, out var libraryId))
         {
-            return SignedError(StatusCodes.Status400BadRequest, "Bibliothèque invalide.", verified.Nonce!);
+            return SignedError(StatusCodes.Status400BadRequest, "InvalidLibrary", verified.Nonce!);
         }
 
         var page = _catalog.GetPage(verified.Peer!, libraryId, start, limit);
         return page is null
-            ? SignedError(StatusCodes.Status404NotFound, "Cette bibliothèque n'est pas partagée avec vous.", verified.Nonce!)
+            ? SignedError(StatusCodes.Status404NotFound, "LibraryNotShared", verified.Nonce!)
             : Signed(page, verified.Nonce!);
     }
 
@@ -342,10 +342,11 @@ public class PeerController : ControllerBase
         return JsonContent(status, json);
     }
 
-    private ContentResult SignedError(int status, string message, string nonce) => Signed(new { error = message }, nonce, status);
+    // Errors carry their code: the other server shows them in its own language.
+    private ContentResult SignedError(int status, string code, string nonce) => Signed(new { error = Text.Get(code), code }, nonce, status);
 
-    private ContentResult Unsigned(int status, string message)
-        => JsonContent(status, JsonSerializer.Serialize(new { error = message }, Models.Json.Options));
+    private ContentResult Unsigned(int status, string code)
+        => JsonContent(status, JsonSerializer.Serialize(new { error = Text.Get(code), code }, Models.Json.Options));
 
     private async Task<Verified> VerifyFromPeerAsync(bool allowInactive = false)
     {
@@ -377,13 +378,13 @@ public class PeerController : ControllerBase
         if (string.IsNullOrEmpty(sender) || string.IsNullOrEmpty(nonce) || nonce.Length > 64 || signature is null
             || !long.TryParse(headers[FedProtocol.HeaderTimestamp].ToString(), NumberStyles.None, CultureInfo.InvariantCulture, out var timestamp))
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "Requête non signée."));
+            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "UnsignedRequest"));
         }
 
         var skew = TimeSpan.FromSeconds(Math.Abs(DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp));
         if (skew > FedProtocol.MaxClockSkew)
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "Horloges désynchronisées entre les deux serveurs."));
+            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "ClockSkew"));
         }
 
         byte[] body;
@@ -396,7 +397,7 @@ public class PeerController : ControllerBase
                 buffer.Write(read, 0, n);
                 if (buffer.Length > MaxBodyBytes)
                 {
-                    return new Verified(Unsigned(StatusCodes.Status413PayloadTooLarge, "Requête trop grosse."));
+                    return new Verified(Unsigned(StatusCodes.Status413PayloadTooLarge, "RequestTooLarge"));
                 }
             }
 
@@ -406,7 +407,7 @@ public class PeerController : ControllerBase
         var key = keyResolver(sender, body);
         if (key is null)
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "Serveur inconnu : vous ne faites pas (ou plus) partie des amis de ce serveur."));
+            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "UnknownServer"));
         }
 
         var input = FedProtocol.RequestSigningInput(
@@ -421,12 +422,12 @@ public class PeerController : ControllerBase
 
         if (!ServerIdentity.Verify(key, input, signature))
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "Signature invalide."));
+            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "InvalidSignature"));
         }
 
         if (!_nonces.TryUse(sender, nonce))
         {
-            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "Requête rejouée."));
+            return new Verified(Unsigned(StatusCodes.Status401Unauthorized, "ReplayedRequest"));
         }
 
         return new Verified(null) { Nonce = nonce, Body = body };

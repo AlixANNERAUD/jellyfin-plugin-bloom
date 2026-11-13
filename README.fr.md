@@ -110,7 +110,7 @@ Vous pouvez mettre un ami en pause (dans les deux sens) ou le retirer. La synchr
 *Tableau de bord → Tâches planifiées → Bloom*.
 
 <p align="center">
-  <img src="docs/images/friends.png" width="760" alt="La carte d'un ami dans la page Bloom : ce que Bob partage avec Alice, ce qu'Alice partage avec Bob, et où ça arrive">
+  <img src="docs/images/friends-fr.png" width="760" alt="La carte d'un ami dans la page Bloom : ce que Bob partage avec Alice, ce qu'Alice partage avec Bob, et où ça arrive">
 </p>
 
 ## Réseau
@@ -154,6 +154,8 @@ c'est **votre** serveur qui transcode.
 
 ## Bon à savoir
 
+- Bloom parle français et anglais. Sa page de réglages suit la langue dans laquelle vous utilisez Jellyfin ; ce
+  qu'il écrit sur le serveur (tâche planifiée, tags, erreurs de synchronisation) suit la langue du serveur.
 - Films et séries uniquement pour l'instant (pas de musique ni de livres). Les rips en dossier (structure DVD ou
   Blu-ray) ne sont pas partagés.
 - Ce qui est partagé n'est **jamais repartagé** : si Bob est ami avec Alice et Claire, Claire ne voit pas les

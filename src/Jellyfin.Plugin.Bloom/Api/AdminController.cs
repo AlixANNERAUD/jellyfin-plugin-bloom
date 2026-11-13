@@ -23,6 +23,7 @@ namespace Jellyfin.Plugin.Bloom.Api;
 [ApiController]
 [Authorize(Policy = Policies.RequiresElevation)]
 [Route("Bloom/Admin")]
+[UsePageLanguage]
 public class AdminController : ControllerBase
 {
     private readonly FederationStore _store;
@@ -141,7 +142,7 @@ public class AdminController : ControllerBase
             url = PairingService.NormalizeUrl(request.PublicUrl);
             if (url is null)
             {
-                return BadRequest(new { error = "URL publique invalide (ex. : https://jellyfin.exemple.fr)." });
+                return BadRequest(new { error = Text.Get("InvalidPublicUrl") });
             }
         }
 
@@ -150,7 +151,7 @@ public class AdminController : ControllerBase
         {
             if (!Path.IsPathFullyQualified(request.MediaRoot))
             {
-                return BadRequest(new { error = "Le dossier des médias fédérés doit être un chemin absolu." });
+                return BadRequest(new { error = Text.Get("MediaRootNotAbsolute") });
             }
 
             mediaRoot = Path.GetFullPath(request.MediaRoot);
@@ -271,7 +272,7 @@ public class AdminController : ControllerBase
         }
         catch (PeerRequestException ex)
         {
-            return BadRequest(new { error = "Le serveur de votre ami a refusé ou n'a pas répondu : " + ex.Message });
+            return BadRequest(new { error = Text.Get("FriendRefused", ex.Message) });
         }
     }
 
@@ -314,7 +315,7 @@ public class AdminController : ControllerBase
                     var target = mergeTargets.FirstOrDefault(l => l.Name == change.TargetLibrary);
                     if (target.Name is null || !string.Equals(target.CollectionType, import.CollectionType, StringComparison.OrdinalIgnoreCase))
                     {
-                        error = $"« {change.TargetLibrary} » n'est pas une bibliothèque de type {import.CollectionType}.";
+                        error = Text.Get("WrongLibraryType", change.TargetLibrary, Text.Get(import.CollectionType == "tvshows" ? "ShowsType" : "MoviesType"));
                         continue;
                     }
 
@@ -327,7 +328,7 @@ public class AdminController : ControllerBase
 
         if (!found)
         {
-            return NotFound(new { error = "Ami inconnu." });
+            return NotFound(new { error = Text.Get("UnknownFriend") });
         }
 
         _sync.QueueSync(peerId, TimeSpan.FromSeconds(1));
@@ -354,7 +355,7 @@ public class AdminController : ControllerBase
     {
         if (_store.FindPeer(peerId) is null)
         {
-            return NotFound(new { error = "Ami inconnu." });
+            return NotFound(new { error = Text.Get("UnknownFriend") });
         }
 
         // Not tied to the HTTP request: closing the page must not abort a sync halfway.
@@ -374,7 +375,7 @@ public class AdminController : ControllerBase
         var peer = _store.FindPeer(peerId);
         if (peer is null)
         {
-            return NotFound(new { error = "Ami inconnu." });
+            return NotFound(new { error = Text.Get("UnknownFriend") });
         }
 
         if (!peer.RevokedByPeer)

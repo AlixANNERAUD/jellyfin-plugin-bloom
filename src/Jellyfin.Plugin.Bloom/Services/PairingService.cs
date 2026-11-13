@@ -20,11 +20,17 @@ public sealed class FederationException : Exception
     /// <summary>
     /// Initializes a new instance of the <see cref="FederationException"/> class.
     /// </summary>
-    /// <param name="message">Message.</param>
-    public FederationException(string message)
-        : base(message)
+    /// <param name="key">Text key (see <see cref="Text"/>).</param>
+    public FederationException(string key)
+        : base(Text.Get(key))
     {
+        Key = key;
     }
+
+    /// <summary>
+    /// Gets the text key, sent along with the error to a friend's server.
+    /// </summary>
+    public string Key { get; }
 }
 
 /// <summary>
@@ -90,10 +96,10 @@ public sealed class PairingService
         code = code?.Trim();
         if (string.IsNullOrEmpty(code) || !code.StartsWith(FedProtocol.InvitePrefix, StringComparison.Ordinal))
         {
-            throw new FederationException("Ce n'est pas un code d'invitation Bloom.");
+            throw new FederationException("NotAnInvite");
         }
 
-        var bytes = FedProtocol.TryDecodeBase64Url(code[FedProtocol.InvitePrefix.Length..]) ?? throw new FederationException("Code d'invitation corrompu.");
+        var bytes = FedProtocol.TryDecodeBase64Url(code[FedProtocol.InvitePrefix.Length..]) ?? throw new FederationException("CorruptInvite");
         InviteCode? invite;
         try
         {
@@ -106,18 +112,18 @@ public sealed class PairingService
 
         if (invite is null || invite.V != FedProtocol.Version || string.IsNullOrEmpty(invite.Token))
         {
-            throw new FederationException("Code d'invitation corrompu ou d'une version incompatible.");
+            throw new FederationException("IncompatibleInvite");
         }
 
         if (!ServerIdentity.IsValidPublicKey(invite.Key) || ServerIdentity.ComputeServerId(invite.Key) != invite.Id)
         {
-            throw new FederationException("La clé contenue dans l'invitation est invalide.");
+            throw new FederationException("InvalidInviteKey");
         }
 
-        invite.Url = NormalizeUrl(invite.Url) ?? throw new FederationException("L'URL contenue dans l'invitation est invalide.");
+        invite.Url = NormalizeUrl(invite.Url) ?? throw new FederationException("InvalidInviteUrl");
         if (DateTimeOffset.FromUnixTimeSeconds(invite.Exp) < DateTimeOffset.UtcNow)
         {
-            throw new FederationException("Cette invitation a expiré, demandez-en une nouvelle.");
+            throw new FederationException("InviteExpired");
         }
 
         return invite;
@@ -132,7 +138,7 @@ public sealed class PairingService
     public (string Code, DateTime ExpiresUtc) CreateInvite(List<Guid> sharedLibraryIds, string? label)
     {
         var settings = _store.Snapshot().Settings;
-        var url = NormalizeUrl(settings.PublicUrl) ?? throw new FederationException("Renseignez d'abord l'URL publique de votre serveur (celle que vos amis peuvent joindre).");
+        var url = NormalizeUrl(settings.PublicUrl) ?? throw new FederationException("SetPublicUrlFirst");
         var token = FedProtocol.RandomToken(32);
         var expires = DateTime.UtcNow.Add(InviteLifetime);
 
@@ -174,16 +180,16 @@ public sealed class PairingService
         var invite = DecodeInvite(code);
         if (invite.Id == _identity.ServerId)
         {
-            throw new FederationException("C'est votre propre invitation : envoyez-la à votre ami.");
+            throw new FederationException("OwnInvite");
         }
 
         if (_store.FindPeer(invite.Id) is not null)
         {
-            throw new FederationException("Ce serveur fait déjà partie de vos amis.");
+            throw new FederationException("AlreadyFriends");
         }
 
         var settings = _store.Snapshot().Settings;
-        var myUrl = NormalizeUrl(settings.PublicUrl) ?? throw new FederationException("Renseignez d'abord l'URL publique de votre serveur : votre ami en a besoin pour lire vos films.");
+        var myUrl = NormalizeUrl(settings.PublicUrl) ?? throw new FederationException("SetPublicUrlForFriend");
 
         var request = new PairRequest
         {
@@ -200,7 +206,7 @@ public sealed class PairingService
         var response = await _client.SendJsonAsync<PairResponse>(endpoint, HttpMethod.Post, "/Bloom/Peer/Pair", request, cancellationToken).ConfigureAwait(false);
         if (response.Id != invite.Id)
         {
-            throw new FederationException("Le serveur a répondu avec une autre identité que celle de l'invitation.");
+            throw new FederationException("IdentityMismatch");
         }
 
         var peer = new PeerRecord
@@ -235,20 +241,20 @@ public sealed class PairingService
     {
         if (request.V != FedProtocol.Version)
         {
-            throw new FederationException("Version de protocole incompatible.");
+            throw new FederationException("IncompatibleProtocol");
         }
 
         if (!ServerIdentity.IsValidPublicKey(request.Key) || ServerIdentity.ComputeServerId(request.Key) != request.Id)
         {
-            throw new FederationException("Clé invalide.");
+            throw new FederationException("InvalidKey");
         }
 
         if (request.Id == _identity.ServerId)
         {
-            throw new FederationException("Un serveur ne peut pas être ami avec lui-même.");
+            throw new FederationException("SelfFriend");
         }
 
-        var url = NormalizeUrl(request.Url) ?? throw new FederationException("URL invalide.");
+        var url = NormalizeUrl(request.Url) ?? throw new FederationException("InvalidUrl");
         var hash = FedProtocol.HashSecret(request.Token);
         var name = string.IsNullOrWhiteSpace(request.Name) ? url : request.Name.Trim();
 
@@ -287,7 +293,7 @@ public sealed class PairingService
 
         if (!accepted)
         {
-            throw new FederationException("Invitation inconnue, déjà utilisée ou expirée.");
+            throw new FederationException("UnknownInvite");
         }
 
         _logger.LogInformation("Bloom: {Name} ({Url}) accepted our invite", name, url);

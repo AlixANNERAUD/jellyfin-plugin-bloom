@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0
+
+- Bloom is now in English as well as French. The settings page follows the language you use Jellyfin in;
+  the scheduled task, tags and sync errors follow the server's language.
+- Errors sent by a friend's server are shown in your own language.
+- Dates on the settings page follow Jellyfin's language too.
+
 ## 0.1.0
 
 First release.

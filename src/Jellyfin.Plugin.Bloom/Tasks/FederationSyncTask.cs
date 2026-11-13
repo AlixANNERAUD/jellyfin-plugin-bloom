@@ -24,13 +24,13 @@ public class FederationSyncTask : IScheduledTask
     }
 
     /// <inheritdoc />
-    public string Name => "Synchroniser les bibliothèques des amis";
+    public string Name => Text.Get("TaskName");
 
     /// <inheritdoc />
     public string Key => "BloomSync";
 
     /// <inheritdoc />
-    public string Description => "Récupère les catalogues partagés par vos amis (Bloom) et met à jour vos bibliothèques.";
+    public string Description => Text.Get("TaskDescription");
 
     /// <inheritdoc />
     public string Category => "Bloom";

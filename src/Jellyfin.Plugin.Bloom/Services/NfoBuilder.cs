@@ -109,7 +109,7 @@ public static class NfoBuilder
 
             if (!string.IsNullOrWhiteSpace(peerName))
             {
-                Element(w, "tag", "Fédération : " + peerName);
+                Element(w, "tag", Text.Get("FriendTag", peerName));
             }
 
             var first = true;

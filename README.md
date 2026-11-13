@@ -40,7 +40,7 @@ what you share. Then:
 - **It works in every Jellyfin app**: web, Android TV, iOS, Swiftfin, Findroid, Infuse… A friend's movie is an
   ordinary Jellyfin item. *Download* also returns the actual video.
 - **You can tell what comes from whom.** A small badge with your friend's name is drawn on their posters and
-  episode images, so it shows on every app. Each item also gets a tag (`Fédération : Alice`) for filtering.
+  episode images, so it shows on every app. Each item is also tagged "Shared by Alice", for filtering.
 - **No duplicates.** If you already have exactly the same file, it is not imported. If you have the movie or
   episode in another quality, your friend's copy becomes a **version** in Jellyfin's version picker ("Alice
   4K"), and yours stays the default. In a show, only the episodes you're missing are added.
@@ -110,8 +110,6 @@ You can pause a friend (both ways) or remove them. Sync settings are under *Dash
   <img src="docs/images/friends.png" width="760" alt="The friend card on Bloom's settings page: what Bob shares with Alice, what Alice shares with Bob, and where it goes">
 </p>
 
-<p align="center"><sub>Bloom's settings page is in French for now.</sub></p>
-
 ## Networking
 
 Your friends' servers, and their players, must be able to reach your server, and you must reach theirs.
@@ -152,6 +150,8 @@ typical 1080p file, 25–80 Mbit/s for 4K. If your device can't play the format,
 
 ## Good to know
 
+- Bloom speaks English and French. Its settings page follows the language you use Jellyfin in; what it writes on
+  the server (scheduled task, tags, sync errors) follows the server's language.
 - Movies and shows only, for now (no music or books). Folder rips (DVD/Blu-ray structure) aren't shared.
 - Shared items are **never re-shared**: if Bob is friends with Alice and Claire, Claire doesn't see Alice's movies.
 - If a friend is offline, their items stay visible but don't play. Nothing is removed while syncing fails.

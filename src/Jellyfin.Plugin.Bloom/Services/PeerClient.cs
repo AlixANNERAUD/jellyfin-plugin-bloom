@@ -109,7 +109,7 @@ public sealed class PeerClient
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new PeerRequestException("Délai dépassé en contactant " + peer.Url, null, ex);
+            throw new PeerRequestException(Text.Get("Timeout", peer.Url), null, ex);
         }
 
         using var disposeResponse = response;
@@ -123,16 +123,16 @@ public sealed class PeerClient
         if (signature is null
             || !ServerIdentity.Verify(peer.PublicKey, FedProtocol.ResponseSigningInput(peer.Id, nonce, (int)response.StatusCode, responseBytes), signature))
         {
-            throw new PeerRequestException("La réponse n'est pas signée par la clé de ce serveur (mauvaise URL, proxy qui altère les réponses, ou usurpation).");
+            throw new PeerRequestException(Text.Get("UnsignedResponse"));
         }
 
         try
         {
-            return JsonSerializer.Deserialize<T>(responseBytes, Json.Options) ?? throw new PeerRequestException("Réponse vide.");
+            return JsonSerializer.Deserialize<T>(responseBytes, Json.Options) ?? throw new PeerRequestException(Text.Get("EmptyResponse"));
         }
         catch (JsonException ex)
         {
-            throw new PeerRequestException("Réponse illisible.", null, ex);
+            throw new PeerRequestException(Text.Get("UnreadableResponse"), null, ex);
         }
     }
 
@@ -152,16 +152,19 @@ public sealed class PeerClient
         try
         {
             using var doc = JsonDocument.Parse(body);
-            if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("error", out var err))
+            if (doc.RootElement.ValueKind == JsonValueKind.Object)
             {
-                message = err.GetString();
+                // A known code is shown in our own language; otherwise, the friend's text as is.
+                message = doc.RootElement.TryGetProperty("code", out var code) && Text.Has(code.GetString())
+                    ? Text.Get(code.GetString()!)
+                    : doc.RootElement.TryGetProperty("error", out var err) ? err.GetString() : null;
             }
         }
         catch (JsonException)
         {
         }
 
-        return string.Format(CultureInfo.InvariantCulture, "HTTP {0}{1}", (int)status, message is null ? string.Empty : " : " + message);
+        return message is null ? Text.Get("HttpError", (int)status) : Text.Get("HttpErrorWithMessage", (int)status, message);
     }
 
     private async Task<HttpResponseMessage> SendSignedAsync(PeerEndpoint peer, HttpMethod method, string pathAndQuery, byte[] body, string nonce, HttpCompletionOption completion, CancellationToken cancellationToken)
@@ -191,11 +194,11 @@ public sealed class PeerClient
         catch (HttpRequestException ex)
         {
             _logger.LogDebug(ex, "Bloom: {Url} unreachable", peer.Url);
-            throw new PeerRequestException("Serveur injoignable : " + ex.Message, null, ex);
+            throw new PeerRequestException(Text.Get("Unreachable", ex.Message), null, ex);
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            throw new PeerRequestException("Délai dépassé en contactant " + peer.Url, null, ex);
+            throw new PeerRequestException(Text.Get("Timeout", peer.Url), null, ex);
         }
     }
 }

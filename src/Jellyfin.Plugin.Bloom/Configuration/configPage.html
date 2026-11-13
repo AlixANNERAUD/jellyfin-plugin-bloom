@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>Bloom</title>
@@ -37,116 +37,112 @@
             </style>
 
             <div class="verticalSection">
-                <h2 class="sectionTitle">Bloom · fédération entre amis</h2>
-                <p class="bloom-muted">
-                    Partagez vos bibliothèques avec des serveurs Jellyfin amis. Leurs films et séries apparaissent dans vos bibliothèques
-                    et sont lus directement depuis leur serveur ; les vôtres apparaissent chez eux. Chaque serveur a une clé : les amis
-                    s'ajoutent par échange de clés, et chaque requête entre serveurs est signée.
-                </p>
+                <h2 class="sectionTitle" data-i18n="title"></h2>
+                <p class="bloom-muted" data-i18n="intro"></p>
             </div>
 
-            <!-- Ce serveur -->
+            <!-- This server -->
             <div class="bloom-card">
-                <h3>Ce serveur</h3>
-                <p>Empreinte de votre clé : <span class="bloom-fp" id="bloomFingerprint">…</span></p>
-                <p class="bloom-muted">Lors de l'ajout d'un ami, comparez vos empreintes de vive voix ou par téléphone : si elles correspondent, personne ne s'est intercalé.</p>
+                <h3 data-i18n="thisServer"></h3>
+                <p><span data-i18n="yourFingerprint"></span> <span class="bloom-fp" id="bloomFingerprint">…</span></p>
+                <p class="bloom-muted" data-i18n="fingerprintHelp"></p>
                 <form id="bloomSettingsForm">
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="bloomPublicUrl">URL publique (joignable par vos amis)</label>
-                        <input id="bloomPublicUrl" type="url" is="emby-input" placeholder="https://jellyfin.exemple.fr" />
+                        <label class="inputLabel inputLabelUnfocused" for="bloomPublicUrl" data-i18n="publicUrl"></label>
+                        <input id="bloomPublicUrl" type="url" is="emby-input" data-i18n-placeholder="publicUrlExample" />
                         <div class="fieldDescription">
-                            Adresse à laquelle les serveurs (et les lecteurs) de vos amis contactent ce serveur. Utilisez HTTPS.
-                            <a href="#" id="bloomUseSuggested" class="bloom-hidden">Utiliser <span id="bloomSuggested"></span></a>
+                            <span data-i18n="publicUrlHelp"></span>
+                            <a href="#" id="bloomUseSuggested" class="bloom-hidden"><span data-i18n="use"></span> <span id="bloomSuggested"></span></a>
                         </div>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="bloomServerName">Nom affiché chez vos amis</label>
+                        <label class="inputLabel inputLabelUnfocused" for="bloomServerName" data-i18n="serverName"></label>
                         <input id="bloomServerName" type="text" is="emby-input" />
-                        <div class="fieldDescription">Laissez vide pour utiliser le nom du serveur Jellyfin.</div>
+                        <div class="fieldDescription" data-i18n="serverNameHelp"></div>
                     </div>
                     <div class="inputContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="bloomMediaRoot">Dossier des médias fédérés</label>
+                        <label class="inputLabel inputLabelUnfocused" for="bloomMediaRoot" data-i18n="mediaRoot"></label>
                         <input id="bloomMediaRoot" type="text" is="emby-input" />
-                        <div class="fieldDescription">Où sont écrits les fichiers .strm/.nfo/affiches des films de vos amis (quelques Ko par film). Vide = <span id="bloomDefaultRoot"></span></div>
+                        <div class="fieldDescription"><span data-i18n="mediaRootHelp"></span> <span id="bloomDefaultRoot"></span></div>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input id="bloomSkipOwned" type="checkbox" is="emby-checkbox" />
-                            <span>Ne pas importer ce que j'ai déjà</span>
+                            <span data-i18n="skipOwned"></span>
                         </label>
-                        <div class="fieldDescription checkboxFieldDescription">Les films et épisodes que vous possédez déjà (même identifiant TMDB/IMDb/TVDB) ne sont pas dupliqués. Les épisodes qui vous manquent dans une série sont quand même ajoutés.</div>
+                        <div class="fieldDescription checkboxFieldDescription" data-i18n="skipOwnedHelp"></div>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input id="bloomVersions" type="checkbox" is="emby-checkbox" />
-                            <span>Proposer les autres versions (films et épisodes)</span>
+                            <span data-i18n="versions"></span>
                         </label>
-                        <div class="fieldDescription checkboxFieldDescription">Si un ami a un film ou un épisode que vous avez déjà, mais dans une autre qualité (4K, HDR…), ou si plusieurs amis l'ont, il n'apparaît qu'une fois et vous choisissez la version au moment de lire. Votre copie est lue par défaut ; exactement le même fichier n'est jamais importé.</div>
+                        <div class="fieldDescription checkboxFieldDescription" data-i18n="versionsHelp"></div>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input id="bloomNotify" type="checkbox" is="emby-checkbox" />
-                            <span>Prévenir mes amis quand j'ajoute des films</span>
+                            <span data-i18n="notify"></span>
                         </label>
-                        <div class="fieldDescription checkboxFieldDescription">Leur serveur se met à jour dans les minutes qui suivent, sans attendre la synchronisation planifiée (toutes les 6 h).</div>
+                        <div class="fieldDescription checkboxFieldDescription" data-i18n="notifyHelp"></div>
                     </div>
                     <div class="checkboxContainer checkboxContainer-withDescription">
                         <label class="emby-checkbox-label">
                             <input id="bloomBadge" type="checkbox" is="emby-checkbox" />
-                            <span>Afficher le nom de l'ami sur les affiches</span>
+                            <span data-i18n="badge"></span>
                         </label>
-                        <div class="fieldDescription checkboxFieldDescription">Un petit badge « Alice » en bas des affiches de ses films et des images de ses épisodes, visible dans toutes les listes et sur toutes les applis (TV, mobile). Pour filtrer, utilisez aussi le tag « Fédération : Alice ».</div>
+                        <div class="fieldDescription checkboxFieldDescription" data-i18n="badgeHelp"></div>
                     </div>
-                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span>Enregistrer</span></button>
+                    <button is="emby-button" type="submit" class="raised button-submit emby-button"><span data-i18n="save"></span></button>
                     <div class="bloom-msg" id="bloomSettingsMsg"></div>
                 </form>
             </div>
 
-            <!-- Inviter -->
+            <!-- Invite -->
             <div class="bloom-card">
-                <h3>Inviter un ami</h3>
-                <p class="bloom-muted">Choisissez ce que vous partagez avec lui, créez l'invitation et envoyez-lui le code par un canal de confiance (Signal, WhatsApp…). Le code est valable 7 jours et ne sert qu'une fois.</p>
+                <h3 data-i18n="inviteTitle"></h3>
+                <p class="bloom-muted" data-i18n="inviteHelp"></p>
                 <div class="bloom-libs" id="bloomInviteLibs"></div>
                 <div class="inputContainer">
-                    <label class="inputLabel inputLabelUnfocused" for="bloomInviteLabel">Pour qui ? (facultatif, pour vous y retrouver)</label>
+                    <label class="inputLabel inputLabelUnfocused" for="bloomInviteLabel" data-i18n="inviteFor"></label>
                     <input id="bloomInviteLabel" type="text" is="emby-input" />
                 </div>
-                <button is="emby-button" type="button" id="bloomCreateInvite" class="raised emby-button"><span>Créer une invitation</span></button>
+                <button is="emby-button" type="button" id="bloomCreateInvite" class="raised emby-button"><span data-i18n="createInvite"></span></button>
                 <div class="bloom-msg" id="bloomInviteMsg"></div>
                 <div id="bloomInviteResult" class="bloom-hidden">
-                    <p>Code à envoyer à votre ami :</p>
+                    <p data-i18n="inviteCode"></p>
                     <textarea class="bloom-code" id="bloomInviteCode" readonly></textarea>
                     <div class="bloom-row" style="margin-top:.5em">
-                        <button is="emby-button" type="button" id="bloomCopyInvite" class="raised emby-button bloom-small"><span>Copier</span></button>
-                        <span class="bloom-muted">Il verra votre empreinte : <span class="bloom-fp" id="bloomInviteFp"></span></span>
+                        <button is="emby-button" type="button" id="bloomCopyInvite" class="raised emby-button bloom-small"><span data-i18n="copy"></span></button>
+                        <span class="bloom-muted"><span data-i18n="theyWillSee"></span> <span class="bloom-fp" id="bloomInviteFp"></span></span>
                     </div>
                 </div>
                 <p class="bloom-muted" id="bloomPendingInvites"></p>
             </div>
 
-            <!-- Rejoindre -->
+            <!-- Join -->
             <div class="bloom-card">
-                <h3>Rejoindre un ami</h3>
-                <p class="bloom-muted">Collez le code d'invitation reçu.</p>
+                <h3 data-i18n="joinTitle"></h3>
+                <p class="bloom-muted" data-i18n="joinHelp"></p>
                 <textarea class="bloom-code" id="bloomJoinCode" placeholder="bloom1:…"></textarea>
                 <div style="margin-top:.6em">
-                    <button is="emby-button" type="button" id="bloomInspect" class="raised emby-button"><span>Vérifier l'invitation</span></button>
+                    <button is="emby-button" type="button" id="bloomInspect" class="raised emby-button"><span data-i18n="inspect"></span></button>
                 </div>
                 <div class="bloom-msg" id="bloomJoinMsg"></div>
                 <div id="bloomJoinPreview" class="bloom-hidden">
-                    <p>Invitation de <strong id="bloomJoinName"></strong> (<span id="bloomJoinUrl"></span>)</p>
-                    <p>Empreinte annoncée : <span class="bloom-fp" id="bloomJoinFp"></span></p>
-                    <p class="bloom-muted">Demandez à votre ami de vous lire l'empreinte affichée sur sa page Bloom : elle doit être identique.</p>
-                    <p>Ce que vous partagez en retour :</p>
+                    <p><span data-i18n="inviteFrom"></span> <strong id="bloomJoinName"></strong> (<span id="bloomJoinUrl"></span>)</p>
+                    <p><span data-i18n="announcedFingerprint"></span> <span class="bloom-fp" id="bloomJoinFp"></span></p>
+                    <p class="bloom-muted" data-i18n="compareFingerprint"></p>
+                    <p data-i18n="shareBack"></p>
                     <div class="bloom-libs" id="bloomJoinLibs"></div>
-                    <button is="emby-button" type="button" id="bloomAccept" class="raised button-submit emby-button"><span>Devenir amis</span></button>
+                    <button is="emby-button" type="button" id="bloomAccept" class="raised button-submit emby-button"><span data-i18n="becomeFriends"></span></button>
                 </div>
             </div>
 
-            <!-- Amis -->
+            <!-- Friends -->
             <div class="bloom-card">
-                <h3>Mes amis</h3>
-                <div id="bloomPeers"><p class="bloom-muted">Chargement…</p></div>
+                <h3 data-i18n="friendsTitle"></h3>
+                <div id="bloomPeers"><p class="bloom-muted" data-i18n="loading"></p></div>
             </div>
         </div>
     </div>
@@ -159,6 +155,210 @@
 
             function $(sel) { return page.querySelector(sel); }
 
+            // Texts of this page, in the language of the person using Jellyfin (English unless it is French).
+            var STRINGS = {
+                en: {
+                    title: 'Bloom · share your libraries with friends',
+                    intro: 'Share your libraries with your friends\' Jellyfin servers. Their movies and shows appear in your libraries and play straight from their server; yours appear on theirs. Each server has a key: friends are added by exchanging keys, and every request between servers is signed.',
+                    thisServer: 'This server',
+                    yourFingerprint: 'Your key\'s fingerprint:',
+                    fingerprintHelp: 'When you add a friend, compare your fingerprints by voice or on the phone: if they match, nobody is in between.',
+                    publicUrl: 'Public URL (reachable by your friends)',
+                    publicUrlExample: 'https://jellyfin.example.com',
+                    publicUrlHelp: 'The address your friends\' servers (and players) use to reach this server. Use HTTPS.',
+                    use: 'Use',
+                    serverName: 'Name shown to your friends',
+                    serverNameHelp: 'Leave empty to use the Jellyfin server name.',
+                    mediaRoot: 'Folder for friends\' media',
+                    mediaRootHelp: 'Where the .strm and .nfo files and the posters of your friends\' movies are written (a few KB per movie). Empty:',
+                    skipOwned: 'Don\'t import what I already have',
+                    skipOwnedHelp: 'Movies and episodes you already own (same TMDB, IMDb or TVDB id) aren\'t duplicated. Episodes you\'re missing in a show are still added.',
+                    versions: 'Offer other versions (movies and episodes)',
+                    versionsHelp: 'If a friend has a movie or an episode you already own, but in another quality (4K, HDR…), or if several friends have it, it shows once and you pick the version when you play it. Your copy plays by default; the exact same file is never imported.',
+                    notify: 'Tell my friends when I add movies',
+                    notifyHelp: 'Their server updates within minutes, without waiting for the scheduled sync (every 6 hours).',
+                    badge: 'Show the friend\'s name on posters',
+                    badgeHelp: 'A small "Alice" badge at the bottom of their movie posters and episode images, visible in every list and in every app (TV, mobile). Their items are also tagged, for filtering.',
+                    save: 'Save',
+                    saved: 'Saved.',
+                    inviteTitle: 'Invite a friend',
+                    inviteHelp: 'Choose what you share with them, create the invite and send them the code through a channel you trust (Signal, WhatsApp…). The code is valid for 7 days and works once.',
+                    inviteFor: 'For whom? (optional, to keep track)',
+                    createInvite: 'Create an invite',
+                    inviteCode: 'Code to send to your friend:',
+                    copy: 'Copy',
+                    theyWillSee: 'They will see your fingerprint:',
+                    inviteCreated: 'Invite created, valid until {0}.',
+                    codeCopied: 'Code copied.',
+                    pendingInvites_one: '{0} pending invite: {1}',
+                    pendingInvites_other: '{0} pending invites: {1}',
+                    pendingInvite: '{0} (expires {1})',
+                    unnamed: 'unnamed',
+                    joinTitle: 'Join a friend',
+                    joinHelp: 'Paste the invite code you received.',
+                    inspect: 'Check the invite',
+                    inviteFrom: 'Invite from',
+                    announcedFingerprint: 'Announced fingerprint:',
+                    compareFingerprint: 'Ask your friend to read you the fingerprint shown on their Bloom page: it must be identical.',
+                    shareBack: 'What you share in return:',
+                    becomeFriends: 'Become friends',
+                    ownInvite: 'This is your own invite: send it to your friend.',
+                    alreadyFriend: '{0} is already one of your friends.',
+                    exchangingKeys: 'Exchanging keys with your friend\'s server…',
+                    nowFriends: 'You are now friends with {0}. First sync in progress…',
+                    friendsTitle: 'My friends',
+                    loading: 'Loading…',
+                    noFriends: 'No friends yet. Create an invite, or paste a friend\'s one above.',
+                    noMediaLibraries: 'No movie or show library.',
+                    noLibraries: 'No library.',
+                    statusRevoked: 'Ended the friendship',
+                    statusPaused: 'Paused',
+                    statusSyncing: 'Syncing…',
+                    statusError: 'Error',
+                    statusConnected: 'Connected',
+                    statusWaiting: 'Waiting',
+                    addTo: 'Add to "{0}"',
+                    separateLibrary: 'Separate library "{0}"',
+                    dontImport: 'Don\'t import',
+                    titles_one: '{0} title',
+                    titles_other: '{0} titles',
+                    otherVersions_one: 'including {0} other version of what you have',
+                    otherVersions_other: 'including {0} other versions of what you have',
+                    alreadyOwned: '{0} already on your server',
+                    sharesNothing: 'Doesn\'t share anything with you yet.',
+                    notSynced: 'Not synced yet.',
+                    fingerprint: 'fingerprint',
+                    friendsSince: 'Friends since {0} · last sync: {1}',
+                    iShare: 'What I share with {0}',
+                    theyShare: 'What {0} shares with me',
+                    active: 'Active (untick to pause, both ways)',
+                    syncNow: 'Sync now',
+                    removeFriend: 'Remove this friend',
+                    savedUpdating: 'Saved. Updating your libraries…',
+                    confirmRemove: 'Remove {0}? Their movies will disappear from your libraries, and yours from theirs.',
+                    never: 'never',
+                    httpError: 'HTTP error {0}',
+                    movies: 'Movies',
+                    shows: 'Shows'
+                },
+                fr: {
+                    title: 'Bloom · fédération entre amis',
+                    intro: 'Partagez vos bibliothèques avec des serveurs Jellyfin amis. Leurs films et séries apparaissent dans vos bibliothèques et sont lus directement depuis leur serveur ; les vôtres apparaissent chez eux. Chaque serveur a une clé : les amis s\'ajoutent par échange de clés, et chaque requête entre serveurs est signée.',
+                    thisServer: 'Ce serveur',
+                    yourFingerprint: 'Empreinte de votre clé :',
+                    fingerprintHelp: 'Lors de l\'ajout d\'un ami, comparez vos empreintes de vive voix ou par téléphone : si elles correspondent, personne ne s\'est intercalé.',
+                    publicUrl: 'URL publique (joignable par vos amis)',
+                    publicUrlExample: 'https://jellyfin.exemple.fr',
+                    publicUrlHelp: 'Adresse à laquelle les serveurs (et les lecteurs) de vos amis contactent ce serveur. Utilisez HTTPS.',
+                    use: 'Utiliser',
+                    serverName: 'Nom affiché chez vos amis',
+                    serverNameHelp: 'Laissez vide pour utiliser le nom du serveur Jellyfin.',
+                    mediaRoot: 'Dossier des médias fédérés',
+                    mediaRootHelp: 'Où sont écrits les fichiers .strm/.nfo/affiches des films de vos amis (quelques Ko par film). Vide =',
+                    skipOwned: 'Ne pas importer ce que j\'ai déjà',
+                    skipOwnedHelp: 'Les films et épisodes que vous possédez déjà (même identifiant TMDB/IMDb/TVDB) ne sont pas dupliqués. Les épisodes qui vous manquent dans une série sont quand même ajoutés.',
+                    versions: 'Proposer les autres versions (films et épisodes)',
+                    versionsHelp: 'Si un ami a un film ou un épisode que vous avez déjà, mais dans une autre qualité (4K, HDR…), ou si plusieurs amis l\'ont, il n\'apparaît qu\'une fois et vous choisissez la version au moment de lire. Votre copie est lue par défaut ; exactement le même fichier n\'est jamais importé.',
+                    notify: 'Prévenir mes amis quand j\'ajoute des films',
+                    notifyHelp: 'Leur serveur se met à jour dans les minutes qui suivent, sans attendre la synchronisation planifiée (toutes les 6 h).',
+                    badge: 'Afficher le nom de l\'ami sur les affiches',
+                    badgeHelp: 'Un petit badge « Alice » en bas des affiches de ses films et des images de ses épisodes, visible dans toutes les listes et sur toutes les applis (TV, mobile). Ses éléments portent aussi un tag, pratique pour filtrer.',
+                    save: 'Enregistrer',
+                    saved: 'Enregistré.',
+                    inviteTitle: 'Inviter un ami',
+                    inviteHelp: 'Choisissez ce que vous partagez avec lui, créez l\'invitation et envoyez-lui le code par un canal de confiance (Signal, WhatsApp…). Le code est valable 7 jours et ne sert qu\'une fois.',
+                    inviteFor: 'Pour qui ? (facultatif, pour vous y retrouver)',
+                    createInvite: 'Créer une invitation',
+                    inviteCode: 'Code à envoyer à votre ami :',
+                    copy: 'Copier',
+                    theyWillSee: 'Il verra votre empreinte :',
+                    inviteCreated: 'Invitation créée, valable jusqu\'au {0}.',
+                    codeCopied: 'Code copié.',
+                    pendingInvites_one: '{0} invitation en attente : {1}',
+                    pendingInvites_other: '{0} invitations en attente : {1}',
+                    pendingInvite: '{0} (expire le {1})',
+                    unnamed: 'sans nom',
+                    joinTitle: 'Rejoindre un ami',
+                    joinHelp: 'Collez le code d\'invitation reçu.',
+                    inspect: 'Vérifier l\'invitation',
+                    inviteFrom: 'Invitation de',
+                    announcedFingerprint: 'Empreinte annoncée :',
+                    compareFingerprint: 'Demandez à votre ami de vous lire l\'empreinte affichée sur sa page Bloom : elle doit être identique.',
+                    shareBack: 'Ce que vous partagez en retour :',
+                    becomeFriends: 'Devenir amis',
+                    ownInvite: 'C\'est votre propre invitation : envoyez-la à votre ami.',
+                    alreadyFriend: '{0} fait déjà partie de vos amis.',
+                    exchangingKeys: 'Échange des clés avec le serveur de votre ami…',
+                    nowFriends: 'Vous êtes maintenant ami avec {0}. Première synchronisation en cours…',
+                    friendsTitle: 'Mes amis',
+                    loading: 'Chargement…',
+                    noFriends: 'Pas encore d\'ami. Créez une invitation ou collez celle d\'un ami ci-dessus.',
+                    noMediaLibraries: 'Aucune bibliothèque de films ou de séries.',
+                    noLibraries: 'Aucune bibliothèque.',
+                    statusRevoked: 'A mis fin à la fédération',
+                    statusPaused: 'En pause',
+                    statusSyncing: 'Synchronisation…',
+                    statusError: 'Erreur',
+                    statusConnected: 'Connecté',
+                    statusWaiting: 'En attente',
+                    addTo: 'Ajouter à « {0} »',
+                    separateLibrary: 'Bibliothèque séparée « {0} »',
+                    dontImport: 'Ne pas importer',
+                    titles_one: '{0} titre',
+                    titles_other: '{0} titres',
+                    otherVersions_one: 'dont {0} autre version de ce que vous avez',
+                    otherVersions_other: 'dont {0} autres versions de ce que vous avez',
+                    alreadyOwned: '{0} déjà chez vous',
+                    sharesNothing: 'Ne partage rien avec vous pour l\'instant.',
+                    notSynced: 'Pas encore synchronisé.',
+                    fingerprint: 'empreinte',
+                    friendsSince: 'Ami depuis le {0} · dernière synchro : {1}',
+                    iShare: 'Ce que je partage avec {0}',
+                    theyShare: 'Ce que {0} partage avec moi',
+                    active: 'Fédération active (décocher pour mettre en pause dans les deux sens)',
+                    syncNow: 'Synchroniser maintenant',
+                    removeFriend: 'Retirer cet ami',
+                    savedUpdating: 'Enregistré. Mise à jour des bibliothèques en cours…',
+                    confirmRemove: 'Retirer {0} ? Ses films disparaîtront de vos bibliothèques, et les vôtres des siennes.',
+                    never: 'jamais',
+                    httpError: 'Erreur HTTP {0}',
+                    movies: 'Films',
+                    shows: 'Séries'
+                }
+            };
+            var lang = 'en';
+
+            function pickLanguage() {
+                var tag = (document.documentElement.getAttribute('lang') || navigator.language || 'en').toLowerCase();
+                return tag.indexOf('fr') === 0 ? 'fr' : 'en';
+            }
+
+            // t('key', a, b) fills {0}, {1}…; tn('key', n, …) picks key_one or key_other for n.
+            function t(key) {
+                var text = STRINGS[lang][key] || STRINGS.en[key] || key;
+                var args = arguments;
+                return text.replace(/\{(\d+)\}/g, function (match, i) {
+                    var value = args[Number(i) + 1];
+                    return value === undefined ? match : String(value);
+                });
+            }
+
+            function tn(key, n) {
+                var one = lang === 'fr' ? n <= 1 : n === 1;
+                var args = Array.prototype.slice.call(arguments, 1);
+                return t.apply(null, [key + (one ? '_one' : '_other')].concat(args));
+            }
+
+            function translatePage() {
+                lang = pickLanguage();
+                Array.prototype.forEach.call(page.querySelectorAll('[data-i18n]'), function (el) {
+                    el.textContent = t(el.getAttribute('data-i18n'));
+                });
+                Array.prototype.forEach.call(page.querySelectorAll('[data-i18n-placeholder]'), function (el) {
+                    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
+                });
+            }
+
             function esc(value) {
                 return String(value === null || value === undefined ? '' : value)
                     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -166,13 +366,13 @@
             }
 
             function fmtDate(value) {
-                if (!value) return 'jamais';
+                if (!value) return t('never');
                 var d = new Date(value);
-                return isNaN(d) ? '—' : d.toLocaleString();
+                return isNaN(d) ? '—' : d.toLocaleString(document.documentElement.getAttribute('lang') || undefined);
             }
 
             function typeLabel(type) {
-                return type === 'tvshows' ? 'Séries' : (type === 'movies' ? 'Films' : (type || '?'));
+                return type === 'tvshows' ? t('shows') : (type === 'movies' ? t('movies') : (type || '?'));
             }
 
             function message(el, text, kind) {
@@ -185,7 +385,8 @@
                     method: method,
                     headers: {
                         'Authorization': 'MediaBrowser Token="' + ApiClient.accessToken() + '"',
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-Bloom-Language': lang
                     },
                     body: body === undefined ? undefined : JSON.stringify(body)
                 });
@@ -193,14 +394,14 @@
                 var data = null;
                 try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
                 if (!res.ok) {
-                    throw new Error((data && (data.error || data.title)) || ('Erreur HTTP ' + res.status));
+                    throw new Error((data && (data.error || data.title)) || t('httpError', res.status));
                 }
                 return data;
             }
 
             function libCheckboxes(container, name, libs, selected) {
                 if (!libs.length) {
-                    container.innerHTML = '<span class="bloom-muted">Aucune bibliothèque de films ou de séries.</span>';
+                    container.innerHTML = '<span class="bloom-muted">' + esc(t('noMediaLibraries')) + '</span>';
                     return;
                 }
                 container.innerHTML = libs.map(function (lib) {
@@ -243,30 +444,31 @@
 
                 var invites = s.Invites || [];
                 $('#bloomPendingInvites').textContent = invites.length
-                    ? invites.length + ' invitation(s) en attente : ' + invites.map(function (i) { return (i.Label || 'sans nom') + ' (expire le ' + fmtDate(i.ExpiresUtc) + ')'; }).join(', ')
+                    ? tn('pendingInvites', invites.length, invites.map(function (i) { return t('pendingInvite', i.Label || t('unnamed'), fmtDate(i.ExpiresUtc)); }).join(', '))
                     : '';
 
                 renderPeers();
             }
 
             function peerStatus(peer) {
-                if (peer.RevokedByPeer) return '<span class="bloom-pill bloom-err">A mis fin à la fédération</span>';
-                if (!peer.Enabled) return '<span class="bloom-pill bloom-off">En pause</span>';
-                if (peer.Busy) return '<span class="bloom-pill bloom-warn">Synchronisation…</span>';
-                if (peer.LastError) return '<span class="bloom-pill bloom-err">Erreur</span>';
-                if (peer.LastSync) return '<span class="bloom-pill bloom-ok">Connecté</span>';
-                return '<span class="bloom-pill bloom-warn">En attente</span>';
+                function pill(kind, key) { return '<span class="bloom-pill ' + kind + '">' + esc(t(key)) + '</span>'; }
+                if (peer.RevokedByPeer) return pill('bloom-err', 'statusRevoked');
+                if (!peer.Enabled) return pill('bloom-off', 'statusPaused');
+                if (peer.Busy) return pill('bloom-warn', 'statusSyncing');
+                if (peer.LastError) return pill('bloom-err', 'statusError');
+                if (peer.LastSync) return pill('bloom-ok', 'statusConnected');
+                return pill('bloom-warn', 'statusWaiting');
             }
 
             function importSelect(peer, imp) {
-                var targets = state.MergeTargets.filter(function (t) { return t.CollectionType === imp.CollectionType; });
+                var targets = state.MergeTargets.filter(function (target) { return target.CollectionType === imp.CollectionType; });
                 var current = imp.Mode === 'Merge' ? 'merge:' + (imp.TargetLibrary || '') : (imp.Mode === 'Separate' ? 'separate' : 'ignore');
-                var options = targets.map(function (t) {
-                    var v = 'merge:' + t.Name;
-                    return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>Ajouter à « ' + esc(t.Name) + ' »</option>';
+                var options = targets.map(function (target) {
+                    var v = 'merge:' + target.Name;
+                    return '<option value="' + esc(v) + '"' + (v === current ? ' selected' : '') + '>' + esc(t('addTo', target.Name)) + '</option>';
                 });
-                options.push('<option value="separate"' + (current === 'separate' ? ' selected' : '') + '>Bibliothèque séparée « ' + esc(imp.RemoteLibraryName + ' (' + peer.Name + ')') + ' »</option>');
-                options.push('<option value="ignore"' + (current === 'ignore' ? ' selected' : '') + '>Ne pas importer</option>');
+                options.push('<option value="separate"' + (current === 'separate' ? ' selected' : '') + '>' + esc(t('separateLibrary', imp.RemoteLibraryName + ' (' + peer.Name + ')')) + '</option>');
+                options.push('<option value="ignore"' + (current === 'ignore' ? ' selected' : '') + '>' + esc(t('dontImport')) + '</option>');
                 return '<select is="emby-select" class="emby-select-withcolor emby-select" data-import="' + esc(imp.RemoteLibraryId) + '">' + options.join('') + '</select>';
             }
 
@@ -274,7 +476,7 @@
                 var container = $('#bloomPeers');
                 var peers = state.Peers || [];
                 if (!peers.length) {
-                    container.innerHTML = '<p class="bloom-muted">Pas encore d\'ami. Créez une invitation ou collez celle d\'un ami ci-dessus.</p>';
+                    container.innerHTML = '<p class="bloom-muted">' + esc(t('noFriends')) + '</p>';
                     return;
                 }
 
@@ -285,29 +487,29 @@
                         return '<div class="checkboxContainer"><label class="emby-checkbox-label">' +
                             '<input type="checkbox" is="emby-checkbox" data-lib="' + esc(lib.Id) + '"' + checked + ' />' +
                             '<span>' + esc(lib.Name) + '</span></label></div>';
-                    }).join('') || '<span class="bloom-muted">Aucune bibliothèque.</span>';
+                    }).join('') || '<span class="bloom-muted">' + esc(t('noLibraries')) + '</span>';
 
                     var imports = (peer.Imports || []).map(function (imp) {
-                        var counts = imp.Mode === 'Ignore' ? '' : ' · ' + imp.ImportedCount + ' titre(s)'
-                            + (imp.VersionCount ? ' dont ' + imp.VersionCount + ' autre(s) version(s) de ce que vous avez' : '')
-                            + (imp.SkippedCount ? ', ' + imp.SkippedCount + ' déjà chez vous' : '');
+                        var counts = imp.Mode === 'Ignore' ? '' : ' · ' + tn('titles', imp.ImportedCount)
+                            + (imp.VersionCount ? ' ' + tn('otherVersions', imp.VersionCount) : '')
+                            + (imp.SkippedCount ? ', ' + t('alreadyOwned', imp.SkippedCount) : '');
                         return '<div class="bloom-import"><div><strong>' + esc(imp.RemoteLibraryName) + '</strong> <span class="bloom-muted">' + esc(typeLabel(imp.CollectionType)) + esc(counts) + '</span></div>' + importSelect(peer, imp) + '</div>';
-                    }).join('') || '<span class="bloom-muted">' + (peer.LastSync ? 'Ne partage rien avec vous pour l\'instant.' : 'Pas encore synchronisé.') + '</span>';
+                    }).join('') || '<span class="bloom-muted">' + esc(t(peer.LastSync ? 'sharesNothing' : 'notSynced')) + '</span>';
 
                     return '<div class="bloom-peer" data-peer="' + esc(peer.Id) + '">' +
                         '<div class="bloom-row"><h4>' + esc(peer.Name) + '</h4>' + peerStatus(peer) + '</div>' +
-                        '<div class="bloom-muted">' + esc(peer.Url) + ' · empreinte <span class="bloom-fp">' + esc(peer.Fingerprint) + '</span></div>' +
-                        '<div class="bloom-muted">Ami depuis le ' + esc(fmtDate(peer.DateAdded)) + ' · dernière synchro : ' + esc(fmtDate(peer.LastSync)) + '</div>' +
+                        '<div class="bloom-muted">' + esc(peer.Url) + ' · ' + esc(t('fingerprint')) + ' <span class="bloom-fp">' + esc(peer.Fingerprint) + '</span></div>' +
+                        '<div class="bloom-muted">' + esc(t('friendsSince', fmtDate(peer.DateAdded), fmtDate(peer.LastSync))) + '</div>' +
                         (peer.LastError ? '<div class="bloom-msg error">' + esc(peer.LastError) + '</div>' : '') +
                         '<div class="bloom-cols">' +
-                            '<div><strong>Ce que je partage avec ' + esc(peer.Name) + '</strong><div class="bloom-libs" data-role="shares">' + shareBoxes + '</div></div>' +
-                            '<div><strong>Ce que ' + esc(peer.Name) + ' partage avec moi</strong><div data-role="imports">' + imports + '</div></div>' +
+                            '<div><strong>' + esc(t('iShare', peer.Name)) + '</strong><div class="bloom-libs" data-role="shares">' + shareBoxes + '</div></div>' +
+                            '<div><strong>' + esc(t('theyShare', peer.Name)) + '</strong><div data-role="imports">' + imports + '</div></div>' +
                         '</div>' +
-                        '<div class="checkboxContainer" style="margin:.6em 0"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" data-role="enabled"' + (peer.Enabled ? ' checked' : '') + ' /><span>Fédération active (décocher pour mettre en pause dans les deux sens)</span></label></div>' +
+                        '<div class="checkboxContainer" style="margin:.6em 0"><label class="emby-checkbox-label"><input type="checkbox" is="emby-checkbox" data-role="enabled"' + (peer.Enabled ? ' checked' : '') + ' /><span>' + esc(t('active')) + '</span></label></div>' +
                         '<div class="bloom-row">' +
-                            '<button is="emby-button" type="button" class="raised button-submit emby-button bloom-small" data-action="save"><span>Enregistrer</span></button>' +
-                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="sync"' + (peer.Busy ? ' disabled' : '') + '><span>Synchroniser maintenant</span></button>' +
-                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="remove"><span>Retirer cet ami</span></button>' +
+                            '<button is="emby-button" type="button" class="raised button-submit emby-button bloom-small" data-action="save"><span>' + esc(t('save')) + '</span></button>' +
+                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="sync"' + (peer.Busy ? ' disabled' : '') + '><span>' + esc(t('syncNow')) + '</span></button>' +
+                            '<button is="emby-button" type="button" class="raised emby-button bloom-small" data-action="remove"><span>' + esc(t('removeFriend')) + '</span></button>' +
                         '</div>' +
                         '<div class="bloom-msg" data-role="msg"></div>' +
                     '</div>';
@@ -319,6 +521,7 @@
             }
 
             async function load() {
+                translatePage();
                 try {
                     state = await call('GET', 'Status');
                     renderStatus();
@@ -345,7 +548,7 @@
                         BadgePosters: $('#bloomBadge').checked,
                         GroupVersions: $('#bloomVersions').checked
                     });
-                    message(msg, 'Enregistré.', 'success');
+                    message(msg, t('saved'), 'success');
                     await load();
                 } catch (err) {
                     message(msg, err.message, 'error');
@@ -360,7 +563,7 @@
                     var res = await call('POST', 'Invites', { SharedLibraryIds: checkedLibs($('#bloomInviteLibs')), Label: $('#bloomInviteLabel').value.trim() || null });
                     $('#bloomInviteCode').value = res.Code;
                     $('#bloomInviteResult').classList.remove('bloom-hidden');
-                    message(msg, 'Invitation créée, valable jusqu\'au ' + fmtDate(res.ExpiresUtc) + '.', 'success');
+                    message(msg, t('inviteCreated', fmtDate(res.ExpiresUtc)), 'success');
                     await load();
                 } catch (err) {
                     message(msg, err.message, 'error');
@@ -370,7 +573,7 @@
             $('#bloomCopyInvite').addEventListener('click', function () {
                 var area = $('#bloomInviteCode');
                 area.select();
-                var done = function () { message($('#bloomInviteMsg'), 'Code copié.', 'success'); };
+                var done = function () { message($('#bloomInviteMsg'), t('codeCopied'), 'success'); };
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(area.value).then(done, function () { document.execCommand('copy'); done(); });
                 } else {
@@ -385,8 +588,8 @@
                 $('#bloomJoinPreview').classList.add('bloom-hidden');
                 try {
                     var info = await call('POST', 'Invites/Inspect', { Code: $('#bloomJoinCode').value.trim() });
-                    if (info.IsSelf) throw new Error('C\'est votre propre invitation : envoyez-la à votre ami.');
-                    if (info.AlreadyFriend) throw new Error(info.Name + ' fait déjà partie de vos amis.');
+                    if (info.IsSelf) throw new Error(t('ownInvite'));
+                    if (info.AlreadyFriend) throw new Error(t('alreadyFriend', info.Name));
                     $('#bloomJoinName').textContent = info.Name;
                     $('#bloomJoinUrl').textContent = info.Url;
                     $('#bloomJoinFp').textContent = info.Fingerprint;
@@ -400,10 +603,10 @@
                 var msg = $('#bloomJoinMsg');
                 var button = this;
                 button.disabled = true;
-                message(msg, 'Échange des clés avec le serveur de votre ami…');
+                message(msg, t('exchangingKeys'));
                 try {
                     var res = await call('POST', 'Invites/Accept', { Code: $('#bloomJoinCode').value.trim(), SharedLibraryIds: checkedLibs($('#bloomJoinLibs')) });
-                    message(msg, 'Vous êtes maintenant fédéré avec ' + res.Name + '. Première synchronisation en cours…', 'success');
+                    message(msg, t('nowFriends', res.Name), 'success');
                     $('#bloomJoinCode').value = '';
                     $('#bloomJoinPreview').classList.add('bloom-hidden');
                     await load();
@@ -435,15 +638,15 @@
                             SharedLibraryIds: checkedLibs(card.querySelector('[data-role="shares"]')),
                             Imports: imports
                         });
-                        message(msg, 'Enregistré. Mise à jour des bibliothèques en cours…', 'success');
+                        message(msg, t('savedUpdating'), 'success');
                         setTimeout(load, 1500);
                     } else if (action === 'sync') {
                         button.disabled = true;
-                        message(msg, 'Synchronisation…');
+                        message(msg, t('statusSyncing'));
                         await call('POST', 'Peers/' + encodeURIComponent(peerId) + '/Sync');
                         await load();
                     } else if (action === 'remove') {
-                        if (!window.confirm('Retirer ' + peer.Name + ' ? Ses films disparaîtront de vos bibliothèques, et les vôtres des siennes.')) return;
+                        if (!window.confirm(t('confirmRemove', peer.Name))) return;
                         await call('DELETE', 'Peers/' + encodeURIComponent(peerId));
                         await load();
                     }

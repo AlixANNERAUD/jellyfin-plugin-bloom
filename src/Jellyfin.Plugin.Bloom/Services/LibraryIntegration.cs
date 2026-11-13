@@ -100,7 +100,7 @@ public sealed class LibraryIntegration
             var target = folders.FirstOrDefault(f => string.Equals(f.Name, import.TargetLibrary, StringComparison.Ordinal));
             if (target is null)
             {
-                throw new InvalidOperationException($"La bibliothèque « {import.TargetLibrary} » n'existe pas.");
+                throw new InvalidOperationException(Text.Get("LibraryMissing", import.TargetLibrary));
             }
 
             if (!target.Locations.Any(l => SamePath(l, directory)))

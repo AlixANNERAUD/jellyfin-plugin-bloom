@@ -174,7 +174,7 @@ public sealed class SyncService : IDisposable
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                error = "Synchronisation interrompue (trop longue, ou ami retiré entre-temps).";
+                error = Text.Get("SyncInterrupted");
             }
             catch (PeerRequestException ex)
             {
@@ -482,7 +482,7 @@ public sealed class SyncService : IDisposable
                 var page = await _client.SendJsonAsync<CatalogPage>(endpoint, HttpMethod.Get, path, null, cancellationToken).ConfigureAwait(false);
                 if (page.Start != start || page.Total < 0 || page.Total > MaxItemsPerLibrary || page.Items is null)
                 {
-                    throw new PeerRequestException("Catalogue invalide reçu.");
+                    throw new PeerRequestException(Text.Get("InvalidCatalog"));
                 }
 
                 version ??= page.Version;
@@ -508,7 +508,7 @@ public sealed class SyncService : IDisposable
             await Task.Delay(TimeSpan.FromSeconds(5 * (attempt + 1)), cancellationToken).ConfigureAwait(false);
         }
 
-        throw new PeerRequestException("Le catalogue de votre ami change en ce moment (analyse en cours ?) ; nouvel essai à la prochaine synchronisation.");
+        throw new PeerRequestException(Text.Get("CatalogChanging"));
     }
 
     private async Task<bool> DownloadAsync(PeerEndpoint endpoint, RemoteFile file, string destination, CancellationToken cancellationToken)
@@ -553,7 +553,7 @@ public sealed class SyncService : IDisposable
                         total += read;
                         if (total > maxBytes)
                         {
-                            throw new IOException("Fichier trop gros.");
+                            throw new IOException("File too large.");
                         }
 
                         await output.WriteAsync(buffer.AsMemory(0, read), timeout.Token).ConfigureAwait(false);

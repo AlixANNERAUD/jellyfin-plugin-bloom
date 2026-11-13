@@ -53,6 +53,7 @@ public sealed class MediaWriterTests : IDisposable
     [Fact]
     public async Task MoviesAreMaterializedAsStrmNfoAndArtwork()
     {
+        Text.UseRequestLanguage("en");
         var state = new PeerSyncState();
         var items = new List<CatalogItem> { Movie("aaaaaaaaaaaa", "Le Dîner de cons", 1998, "9421"), Movie("bbbbbbbbbbbb", "What/If: Part?", 2020) };
 
@@ -72,7 +73,7 @@ public sealed class MediaWriterTests : IDisposable
         Assert.Equal("Le Dîner de cons", nfo.Root.Element("title")!.Value);
         Assert.Equal("9421", nfo.Root.Elements("uniqueid").First(e => (string?)e.Attribute("type") == "tmdb").Value);
         Assert.Equal("Jean <Dujardin>", nfo.Root.Element("actor")!.Element("name")!.Value);
-        Assert.Contains(nfo.Root.Elements("tag"), t => t.Value == "Fédération : Alice");
+        Assert.Contains(nfo.Root.Elements("tag"), t => t.Value == "Shared by Alice");
 
         // Unsafe characters never reach the file system, and no provider id falls back to the item id.
         Assert.True(Directory.Exists(Path.Combine(LibDir, "What If Part (2020) [jf-bbbbbbbb]")));

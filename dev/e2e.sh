@@ -19,8 +19,8 @@ if [ ! -f data/.media-v3 ]; then
   docker run --rm -v "$PWD":/work -w /work --entrypoint /bin/bash -e FFMPEG=/usr/lib/jellyfin-ffmpeg/ffmpeg jellyfin/jellyfin:12.4 ./make-media.sh
 fi
 for s in alice bob; do
-  mkdir -p "data/$s/config/plugins/Bloom_0.1.0.0"
-  cp ../artifacts/plugin/Jellyfin.Plugin.Bloom.dll "data/$s/config/plugins/Bloom_0.1.0.0/"
+  mkdir -p "data/$s/config/plugins/Bloom"
+  cp ../artifacts/plugin/Jellyfin.Plugin.Bloom.dll "data/$s/config/plugins/Bloom/"
 done
 
 docker compose up -d
