@@ -104,6 +104,36 @@ public sealed class MediaWriterTests : IDisposable
     }
 
     [Fact]
+    public async Task ARenamedFriendKeepsItsFileNames()
+    {
+        Text.UseRequestLanguage("en");
+        var state = new PeerSyncState();
+        var movie = Movie("aaaaaaaaaaaa", "A", 2001, "1");
+        var folder = Path.Combine(LibDir, "A (2001) [tmdbid-1]");
+        await Writer(state).WriteAsync("movies", [movie], Url, "Alice", null, CancellationToken.None);
+        var downloadsAfterFirst = _downloads.Count;
+
+        var renamed = await Writer(state).WriteAsync("movies", [movie], Url, "Bob", null, CancellationToken.None);
+
+        // Same files, nothing downloaded again: Jellyfin keeps the items it knows.
+        Assert.True(File.Exists(Path.Combine(folder, "A (2001) - Alice.strm")));
+        Assert.True(File.Exists(Path.Combine(folder, "A (2001) - Alice.fre.srt")));
+        Assert.Empty(Directory.GetFiles(folder, "*Bob*"));
+        Assert.Equal(downloadsAfterFirst, _downloads.Count);
+
+        // The tag follows the new name.
+        Assert.True(renamed.Changed);
+        var nfo = XDocument.Load(Path.Combine(folder, "A (2001) - Alice.nfo"));
+        Assert.Contains(nfo.Root!.Elements("tag"), t => t.Value == "Shared by Bob");
+
+        // Once nothing of the friend is left on disk, their items come back under the new name.
+        await Writer(state).WriteAsync("movies", [], Url, "Bob", null, CancellationToken.None);
+        await Writer(state).WriteAsync("movies", [movie], Url, "Bob", null, CancellationToken.None);
+        Assert.True(File.Exists(Path.Combine(folder, "A (2001) - Bob.strm")));
+        Assert.Empty(Directory.GetFiles(folder, "*Alice*"));
+    }
+
+    [Fact]
     public async Task OwnedMoviesAreSkipped()
     {
         var owned = new OwnedIndex();

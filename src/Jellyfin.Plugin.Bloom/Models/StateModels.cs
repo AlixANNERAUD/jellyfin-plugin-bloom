@@ -171,4 +171,10 @@ public sealed class PeerSyncState
 {
     /// <summary>Gets or sets the hash/tag of each managed file, keyed by path relative to the friend folder.</summary>
     public Dictionary<string, string> Files { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Gets or sets the friend name used in file names ("Title (2010) - Alice 4K"). It is kept when the friend
+    /// renames their server: new file names would make Jellyfin see every item as removed and added again.
+    /// </summary>
+    public string? FileLabel { get; set; }
 }

@@ -169,6 +169,9 @@ c'est **votre** serveur qui transcode.
   synchronisation échoue.
 - Chaque serveur garde son propre historique de lecture. Si un ami renomme ou ré-identifie un film, Jellyfin peut le
   traiter comme un nouveau film, et l'historique de ce film est perdu.
+- Si un ami renomme son serveur, le badge et le tag suivent à la synchronisation suivante, mais le sélecteur de
+  version garde le nom qu'il avait au premier import de ses éléments : renommer les fichiers ferait voir chaque
+  élément comme nouveau à Jellyfin.
 - **Infuse** n'affiche le badge qu'en mode *Direct* : en mode *Bibliothèque*, il utilise ses propres affiches.
 - Bloom écrit les éléments de vos amis dans `<données Jellyfin>/bloom/media` (modifiable). Ne les éditez pas à la main.
   Changer ce dossier retire les éléments de vos amis puis les importe de nouveau dans le nouveau dossier : leur

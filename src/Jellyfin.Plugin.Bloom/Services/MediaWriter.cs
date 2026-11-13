@@ -395,13 +395,21 @@ public sealed partial class MediaWriter
         }
 
 
+        // File names keep the name the friend had when their items were first written: only a friend with nothing
+        // on disk takes their current name. Badges and tags follow the current name.
+        if (string.IsNullOrWhiteSpace(_state.FileLabel) || _state.Files.Count == 0)
+        {
+            _state.FileLabel = peerName;
+        }
+
+        var fileLabel = _state.FileLabel;
         if (collectionType == "tvshows")
         {
-            PlanSeries(items, streamUrl, peerName, owned, desired, result);
+            PlanSeries(items, streamUrl, peerName, fileLabel, owned, desired, result);
         }
         else
         {
-            PlanMovies(items, streamUrl, peerName, owned, desired, result);
+            PlanMovies(items, streamUrl, peerName, fileLabel, owned, desired, result);
         }
 
         var pending = new List<(string Rel, string Full, RemoteFile File)>();
@@ -577,7 +585,7 @@ public sealed partial class MediaWriter
     [GeneratedRegex(@"\s+")]
     private static partial Regex Spaces();
 
-    private void PlanMovies(IReadOnlyList<CatalogItem> items, Func<CatalogItem, string> streamUrl, string peerName, OwnedIndex? owned, Dictionary<string, object> desired, LibraryWriteResult result)
+    private void PlanMovies(IReadOnlyList<CatalogItem> items, Func<CatalogItem, string> streamUrl, string peerName, string fileLabel, OwnedIndex? owned, Dictionary<string, object> desired, LibraryWriteResult result)
     {
         var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var movie in items.Where(i => i.Type == "Movie" && i.StreamToken is not null).OrderBy(i => i.Id, StringComparer.Ordinal))
@@ -596,7 +604,7 @@ public sealed partial class MediaWriter
 
             // "Title (2010) - Alice 4K": Jellyfin's naming for versions, so the picker shows "Alice 4K".
             var baseName = BaseName(movie);
-            var fileName = $"{baseName} - {VersionLabel(peerName, movie)}";
+            var fileName = $"{baseName} - {VersionLabel(fileLabel, movie)}";
             var folder = FolderName(movie, baseName, ["tmdb", "imdb"], used);
             desired[$"{folder}/{fileName}.strm"] = streamUrl(movie) + "\n";
             desired[$"{folder}/{fileName}.nfo"] = NfoBuilder.Movie(movie, peerName);
@@ -606,7 +614,7 @@ public sealed partial class MediaWriter
         }
     }
 
-    private void PlanSeries(IReadOnlyList<CatalogItem> items, Func<CatalogItem, string> streamUrl, string peerName, OwnedIndex? owned, Dictionary<string, object> desired, LibraryWriteResult result)
+    private void PlanSeries(IReadOnlyList<CatalogItem> items, Func<CatalogItem, string> streamUrl, string peerName, string fileLabel, OwnedIndex? owned, Dictionary<string, object> desired, LibraryWriteResult result)
     {
         var seasons = items.Where(i => i.Type == "Season" && i.SeriesId is not null && i.IndexNumber is not null)
             .GroupBy(i => (i.SeriesId!, i.IndexNumber!.Value))
@@ -677,7 +685,7 @@ public sealed partial class MediaWriter
                 }
 
                 // "Show S01E02 - Alice 1080p": the version picker shows "Alice 1080p".
-                name += " - " + VersionLabel(peerName, episode);
+                name += " - " + VersionLabel(fileLabel, episode);
 
                 if (!usedEpisodes.Add(seasonDir + "/" + name))
                 {

@@ -161,6 +161,9 @@ typical 1080p file, 25–80 Mbit/s for 4K. If your device can't play the format,
 - If a friend is offline, their items stay visible but don't play. Nothing is removed while syncing fails.
 - Each server keeps its own watch history. If a friend renames or re-identifies a movie, Jellyfin may see it as
   new, and the history of that movie is lost.
+- If a friend renames their server, the badge and the tag follow at the next sync, but the version picker keeps
+  the name they had when their items were first imported: renaming the files would make Jellyfin see every item
+  as new.
 - **Infuse** shows the badge in *Direct* mode only: in *Library* mode it uses its own posters.
 - Bloom writes friends' items to `<Jellyfin data>/bloom/media` (configurable). Don't edit them by hand. Changing
   that folder removes friends' items and imports them again in the new one: their watch history starts over.
